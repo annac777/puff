@@ -12,6 +12,20 @@
 8. Take a break stores the active tab title/URL as a lightweight checkpoint.
 9. Resume shows the held context and returns the user to work.
 
+## Optional break-time task
+
+Before leaving, the user can approve exactly one bounded task. The break screen shows what is running, what data it can access and how to cancel. On return, the result appears beside the checkpoint. The strongest MVP candidates are:
+
+1. Group the current session's open tabs into Keep / Close later / Return first.
+2. Collect cited links from already-open tabs into a return packet.
+3. Turn the user-provided “next thought” into a concise restart card.
+
+The first build should select only one. A broad “work while you rest” promise would collapse the product into a generic assistant and introduce too many permissions.
+
+## Growth incentive
+
+The visual object changes only on meaningful transitions: accepting an off-ramp, completing a break and successfully resuming. It should not grow from raw hours worked. The metaphor should communicate continuity—something was safely held while the user was away.
+
 ## Required edge scenarios
 
 ### Continuous typing
