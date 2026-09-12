@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Adaptive Off-Ramp Agent",
+  "version": "0.1.0",
+  "description": "Finds a gentle off-ramp from focused browser work without recording typed content.",
+  "permissions": ["alarms", "idle", "storage", "tabs"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Off-Ramp Agent"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

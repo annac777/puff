@@ -1,0 +1,7 @@
+{
+  "name": "adaptive-off-ramp-agent",
+  "private": true,
+  "scripts": {
+    "test": "node --test extension/tests/*.test.js"
+  }
+}

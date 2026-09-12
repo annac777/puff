@@ -1,0 +1,39 @@
+#off-ramp-root {
+  all: initial;
+  --ink: #24312b;
+  --paper: #f6f2e7;
+  --leaf: #80a58d;
+  position: fixed;
+  z-index: 2147483647;
+  right: 22px;
+  bottom: 22px;
+  width: 320px;
+  box-sizing: border-box;
+  padding: 18px;
+  border: 1px solid rgba(36, 49, 43, .18);
+  border-radius: 22px;
+  color: var(--ink);
+  background: rgba(246, 242, 231, .96);
+  box-shadow: 0 18px 55px rgba(36, 49, 43, .2);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  backdrop-filter: blur(16px);
+  transition: transform .25s ease, opacity .25s ease;
+}
+#off-ramp-root.or-hidden { transform: translateY(16px); opacity: 0; pointer-events: none; }
+#off-ramp-root .or-close { all: unset; cursor: pointer; position: absolute; right: 14px; top: 10px; font-size: 22px; opacity: .5; }
+#off-ramp-root .or-pet { position: absolute; left: 18px; top: -28px; width: 54px; height: 54px; border-radius: 50% 50% 44% 44%; background: var(--leaf); box-shadow: inset 0 -6px rgba(0,0,0,.08), 0 8px 18px rgba(36,49,43,.16); }
+#off-ramp-root .or-pet::before, #off-ramp-root .or-pet::after { content: ""; position: absolute; top: 20px; width: 5px; height: 7px; border-radius: 50%; background: var(--ink); }
+#off-ramp-root .or-pet::before { left: 15px; } #off-ramp-root .or-pet::after { right: 15px; }
+#off-ramp-root .or-copy { display: grid; gap: 4px; }
+#off-ramp-root small { letter-spacing: .13em; font-size: 9px; opacity: .58; }
+#off-ramp-root strong { font-size: 17px; font-weight: 650; }
+#off-ramp-root p { margin: 0; color: rgba(36,49,43,.75); }
+#off-ramp-root .or-metrics { margin-top: 12px; padding: 8px 10px; border-radius: 10px; background: rgba(36,49,43,.06); font-size: 10px; }
+#off-ramp-root .or-checkpoint { margin-top: 8px; font-size: 12px; font-style: italic; }
+#off-ramp-root .or-actions { display: flex; gap: 8px; margin-top: 13px; }
+#off-ramp-root .or-actions button { all: unset; cursor: pointer; padding: 8px 12px; border-radius: 999px; font: 600 12px/1 -apple-system, sans-serif; }
+#off-ramp-root .or-primary { color: white !important; background: var(--ink) !important; }
+#off-ramp-root .or-secondary { border: 1px solid rgba(36,49,43,.25) !important; }
+#off-ramp-root[data-mode="quiet"], #off-ramp-root[data-mode="considering"] { opacity: .72; transform: scale(.94); transform-origin: bottom right; }
+#off-ramp-root[data-mode="on_break"] { --leaf: #7c91b2; }
+#off-ramp-root[data-mode="checkpoint"] { --leaf: #c79a67; }

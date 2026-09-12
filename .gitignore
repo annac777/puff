@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+coverage/
+*.log
+
+# Official upstream starter kit is kept locally as a reference and has its own repository.
+starter-kit/
