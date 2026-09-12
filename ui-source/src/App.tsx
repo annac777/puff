@@ -38,6 +38,16 @@ export function applyContext(next: { summary: string; frames: string[]; suggeste
   CTX.activeTitle = next.activeTitle || ''
 }
 
+
+/** Pill colour follows the measured work state, so time and colour can never disagree. */
+const PILL: Record<WorkState, { bg: string; border: string; text: string; dot: string }> = {
+  fresh:     { bg: '#F0F9FF', border: '#BAE6FD', text: '#0369A1', dot: '#7EC8E3' },
+  focused:   { bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', dot: '#34D399' },
+  tired:     { bg: '#FEF9C3', border: '#FDE68A', text: '#854D0E', dot: '#FBBF24' },
+  exhausted: { bg: '#FFEDD5', border: '#FED7AA', text: '#9A3412', dot: '#FB923C' },
+  critical:  { bg: '#FEE2E2', border: '#FECACA', text: '#991B1B', dot: '#F87171' },
+}
+
 // Per work-state cloud appearance
 const CLOUD_COLOR: Record<WorkState, string> = {
   fresh:     '#7EC8E3',
@@ -550,10 +560,11 @@ function ProactiveScreen({ workState, workDuration, onTakeBreak, onDismiss }: {
       </div>
 
       <div className="text-center space-y-1.5 px-1">
-        <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-1 ${isCritical ? 'bg-[#FEE2E2] border border-[#FECACA]' : 'bg-[#FEF9C3] border border-[#FDE68A]/60'}`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${isCritical ? 'bg-[#F87171]' : 'bg-[#FBBF24]'}`}
-            style={{ animation: 'glowPulse 1.2s ease-in-out infinite' }} />
-          <span className={`text-[11px] font-bold ${isCritical ? 'text-[#991B1B]' : 'text-[#854D0E]'}`}>
+        <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-1 border"
+          style={{ background: PILL[workState].bg, borderColor: PILL[workState].border }}>
+          <div className="w-1.5 h-1.5 rounded-full"
+            style={{ background: PILL[workState].dot, animation: 'glowPulse 1.2s ease-in-out infinite' }} />
+          <span className="text-[11px] font-bold" style={{ color: PILL[workState].text }}>
             Working for {workDuration}
           </span>
         </div>
@@ -585,9 +596,12 @@ function ManualScreen({ workState, workDuration, onHold, onDismiss }: {
         <PuffCloud workState={workState} screen="manual" />
       </div>
       <div className="text-center space-y-1.5 px-1">
-        <div className="inline-flex items-center gap-1.5 bg-[#F0F9FF] border border-[#BAE6FD]/60 rounded-full px-3 py-1 mb-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#7EC8E3]" />
-          <span className="text-[11px] font-bold text-[#0369A1]">Working for {workDuration}</span>
+        <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-1 border"
+          style={{ background: PILL[workState].bg, borderColor: PILL[workState].border }}>
+          <div className="w-1.5 h-1.5 rounded-full"
+            style={{ background: PILL[workState].dot,
+              animation: workState === 'exhausted' || workState === 'critical' ? 'glowPulse 1.2s ease-in-out infinite' : 'none' }} />
+          <span className="text-[11px] font-bold" style={{ color: PILL[workState].text }}>Working for {workDuration}</span>
         </div>
         <h2 className="text-[18px] font-semibold text-[#1A1A1A] tracking-tight leading-snug">
           Taking a break?
