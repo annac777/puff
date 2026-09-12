@@ -20,6 +20,8 @@
 
 The selected implementation prototype is **Adaptive Break / Off-Ramp Agent**. Its loadable Manifest V3 extension lives in [extension](extension), with product, privacy, collaboration, testing and demo documentation in [docs](docs). Run `npm test` from this directory for the local decision-policy checks.
 
+Design and engineering should use [docs/interaction-scenarios.md](docs/interaction-scenarios.md) as the shared Figma-to-code scenario contract.
+
 ## 当前准备状态
 
 - [x] 官方活动页、handbook、赛程、评分和奖项已核对

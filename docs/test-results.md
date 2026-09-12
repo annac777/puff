@@ -36,6 +36,10 @@ The manifest and scripts can be parsed without Chrome. Static checks establish t
 | Content → worker messaging | Pending real Chrome | Counters visible after content events |
 | Persistence after worker suspension | Pending real Chrome | Inspect storage/reopen popup after waiting |
 
+## Installation attempt
+
+Chrome Developer Mode was available. The first automated picker attempt selected `extension/tests` rather than the parent `extension` directory, so Chrome correctly rejected it with “manifest missing or unreadable.” This is not an extension manifest failure. Reload using the exact parent directory before marking real-browser checks complete.
+
 ## Restricted pages
 
 Expect no injection on `chrome://extensions`, other `chrome://` pages, the Chrome Web Store and browser-protected surfaces. Test on a normal `https://` page.
