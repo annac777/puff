@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><style>
+body{font:13px/1.5 Inter,Arial,sans-serif;background:#f6f3ec;color:#243b32;padding:16px}h2{font-size:20px}input{box-sizing:border-box;width:100%;padding:9px;margin:5px 0 10px;border:1px solid #a9b7ac;border-radius:7px}button{padding:10px 14px;background:#294c3e;color:white;border:0;border-radius:20px;cursor:pointer}#stop{background:#dce4dc;color:#294c3e}p,small{color:#52665a}#status{padding:10px;background:#e5ebdf;border-radius:8px;overflow-wrap:anywhere}
+</style><h2>Off-Ramp · Figma adapter</h2><p>Share current page/frame names, selection, and changed property names with your local Off-Ramp backend. No text contents, images, or full-file export.</p>
+<label>Pairing token from Off-Ramp settings<input id="token" type="password" autocomplete="off"></label>
+<label>Optional link to this Figma file<input id="file" type="url" placeholder="https://www.figma.com/design/…"></label>
+<button id="connect">Enable sharing</button> <button id="stop">Stop sharing</button><p id="status">Off. Keep this plugin open while working.</p><small>Model sharing is a separate approval in Off-Ramp. Resume only changes selection and viewport, never your design.</small>
+<script>
+let enabled=false,sessionId='',busy=false;const seen=new Set();const status=document.getElementById('status');
+async function api(route,body){const r=await fetch('http://127.0.0.1:4318'+route,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+document.getElementById('token').value.trim()},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.error||'Connection failed');return j;}
+document.getElementById('connect').onclick=()=>{if(document.getElementById('token').value.trim().length<32){status.textContent='Paste the local pairing token first.';return;}enabled=true;parent.postMessage({pluginMessage:{type:'enable'}},'*');status.textContent='Connecting…';};
+document.getElementById('stop').onclick=async()=>{enabled=false;parent.postMessage({pluginMessage:{type:'disable'}},'*');try{await api('/disconnect-figma',{sessionId});}catch{}status.textContent='Sharing stopped.';};
+window.onmessage=async(event)=>{if(event.source!==parent)return;const m=event.data.pluginMessage;if(!m)return;try{
+if(m.type==='snapshot'&&enabled){sessionId=m.snapshot.sessionId;await api('/snapshot',{...m.snapshot,fileUrl:document.getElementById('file').value.trim()});status.textContent='Connected · '+m.snapshot.page.name+' · '+m.snapshot.selection.length+' selected';}
+if(m.type==='restore-result'){await api('/command-result',m);status.textContent=m.message;}
+}catch(error){status.textContent=error.message;}};
+setInterval(async()=>{if(!enabled||!sessionId||busy)return;busy=true;try{const result=await api('/commands',{sessionId});for(const command of result.commands){if(seen.has(command.id))continue;seen.add(command.id);parent.postMessage({pluginMessage:{type:'restore',command}},'*');}}catch(error){status.textContent='Bridge unavailable: '+error.message;}finally{busy=false;}},2000);
+</script></html>

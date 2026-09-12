@@ -37,3 +37,9 @@
 #off-ramp-root[data-mode="quiet"], #off-ramp-root[data-mode="considering"] { opacity: .72; transform: scale(.94); transform-origin: bottom right; }
 #off-ramp-root[data-mode="on_break"] { --leaf: #7c91b2; }
 #off-ramp-root[data-mode="checkpoint"] { --leaf: #c79a67; }
+#off-ramp-root[data-mode="quiet"], #off-ramp-root[data-mode="considering"] {width:170px;padding:10px 14px;opacity:.85;}
+#off-ramp-root[data-mode="quiet"] .or-copy, #off-ramp-root[data-mode="considering"] .or-copy,
+#off-ramp-root[data-mode="quiet"] .or-metrics, #off-ramp-root[data-mode="considering"] .or-metrics {display:none;}
+#off-ramp-root .or-metrics {display:none;}
+#off-ramp-root.or-hidden {opacity:0!important;pointer-events:none!important;}
+@media(prefers-reduced-motion:reduce){#off-ramp-root{transition:none}}

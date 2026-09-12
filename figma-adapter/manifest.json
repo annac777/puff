@@ -1,0 +1,10 @@
+{
+  "name":"Off-Ramp — Design Context Adapter",
+  "id":"off-ramp-design-context-dev",
+  "api":"1.0.0",
+  "main":"code.js",
+  "ui":"ui.html",
+  "editorType":["figma"],
+  "documentAccess":"dynamic-page",
+  "networkAccess":{"allowedDomains":["none"],"devAllowedDomains":["http://127.0.0.1:4318","http://localhost:4318"]}
+}

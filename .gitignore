@@ -9,3 +9,17 @@ coverage/
 
 # Official upstream starter kit is kept locally as a reference and has its own repository.
 starter-kit/
+.off-ramp/
+figma-adapter/code.js
+
+# Local event preparation and historical working notes (kept on disk).
+/0[1-8]-*.md
+/docs/stack-and-sponsor-audit.md
+/docs/research-and-market-gap.md
+/docs/test-results.md
+/docs/product-brief.md
+/docs/mvp-scope.md
+/docs/interaction-scenarios.md
+/docs/collaboration-contract.md
+/docs/ui-requirements-for-hyeji.md
+/design/README.md

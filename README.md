@@ -1,41 +1,61 @@
-# Agents, Everywhere — NYC Hackathon Prep
+# Hold That Thought
 
-> **时间敏感提醒：** 官方纽约活动页显示活动为 **2026-09-12（周六）10:00–17:00 EDT**，不是 9 月 13 日。地点仅在申请获批后显示。请立即登录 AI Tinkerers 或检查 acceptance 邮件确认地址。
+An agent that keeps your place and moves one approved task forward while you step away.
 
-这是赛前准备目录。为了符合资格要求，这里只放官方 starter kit、调研、选择框架和提交模板；**不要在官方 build window 前实现参赛项目的核心功能**。
+Leaving unfinished work means remembering the page, the open question, and the next step. Hold That Thought helps you hand off that moment: review the context, confirm your intention, save your place, and optionally approve a small public research task. Return to a sourced result and the next step you chose.
 
-## 从这里开始
+## Current build
 
-1. 阅读 [01-event-brief.md](01-event-brief.md) — 规则、赛程、评分、奖项。
-2. 用 [02-brainstorm.md](02-brainstorm.md) — 先自己发散，再按评分表收敛。
-3. 阅读 [03-resources-and-starter-kit.md](03-resources-and-starter-kit.md) — 官方资源、starter kit、各模板取舍。
-4. 阅读 [04-past-projects-and-strategy.md](04-past-projects-and-strategy.md) — 往届获奖作品与胜出模式。
-5. 到场后照 [05-build-day-runbook.md](05-build-day-runbook.md) 执行。
-6. 如果想法需要实时搜索，阅读 [06-exa-quick-reference.md](06-exa-quick-reference.md)。
-7. 阅读 [07-agent-landscape-research.md](07-agent-landscape-research.md) — 市场、研究前沿、拥挤赛道与机会空位。
-8. 用 [08-agent-use-case-funnel.md](08-agent-use-case-funnel.md) — 先判断哪些真实时刻需要 Agent，再从生活、工作和交流中收敛到 niche。
-9. 官方代码位于 [starter-kit](starter-kit/README.md)，依赖已安装，根目录离线验证已通过。
+- Chrome extension with local activity estimates, quiet invitations, cooldowns, and saved browser anchors.
+- Optional Figma plugin sharing selected-node and recent-change metadata after consent.
+- Local TypeScript backend using OpenAI Agents SDK with OpenAI or OpenRouter.
+- Model-assisted checkpoint cards with editable intentions and validated frame anchors.
+- Separately approved Exa research with source links, cancellation, and execution limits.
+- Persistent checkpoints and research results; acknowledged restore commands.
 
-## Current MVP
+The implementation has passed local automated checks. Live model/search and browser UI checks are documented in [implementation status](docs/implementation-status.md). Real Figma-file capture/restore and the updated installed Chrome extension still need acceptance testing. Context-based task suggestions and the redesigned handoff flow remain planned. The backend must stay running on an awake computer.
 
-The selected implementation prototype is **Adaptive Break / Off-Ramp Agent**. Its loadable Manifest V3 extension lives in [extension](extension), with product, privacy, collaboration, testing and demo documentation in [docs](docs). Run `npm test` from this directory for the local decision-policy checks.
+## Run locally
 
-Design and engineering should use [docs/interaction-scenarios.md](docs/interaction-scenarios.md) as the shared Figma-to-code scenario contract.
+Requires Node.js 22+ and npm.
 
-The next milestone is the full agentic loop: understand the user's current work, understand schedule constraints, choose an appropriate intervention moment, ask permission, complete one bounded task during the break, and report back. The task menu and approval boundaries are defined in [docs/product-brief.md](docs/product-brief.md).
+```sh
+npm ci
+cp .env.example .env
+# Fill in your provider and Exa API keys in .env.
+npm run build:figma
+npm run dev
+```
 
-## 当前准备状态
+1. Open `http://127.0.0.1:4318` and choose **Connect local backend**.
+2. In Chrome, open `chrome://extensions`, enable Developer mode, and choose **Load unpacked**. Select this repository's `extension` folder. Reload an existing installation and refresh test pages after changes.
+3. Pair the extension with the local backend using the pairing token from connection settings.
+4. For Figma, follow the [adapter setup guide](figma-adapter/README.md), then explicitly enable metadata sharing.
+5. Review context, approve model sharing, edit your next step, and save a checkpoint. Enter and approve a public research question if you want to delegate work.
 
-- [x] 官方活动页、handbook、赛程、评分和奖项已核对
-- [x] 官方 starter kit 已 clone
-- [x] 根目录 `.env` 已由 `.env.example` 创建（没有填入任何密钥）
-- [x] `npm ci` 已完成
-- [x] `npm run verify` 已通过：类型检查及 93 个离线测试全部通过
-- [ ] 登录 Credits & Offers 页面并兑换/记录 credits（仅参会者可见）
-- [ ] 确认 acceptance、会场地址及到场方式
-- [ ] 选择项目想法、队友和唯一主 surface
-- [ ] 配置明天实际要用的账号和 API keys
+Keys belong only in the ignored root `.env`. `OFFRAMP_PROVIDER` supports `openai` or `openrouter`; `OFFRAMP_MODEL` selects the model. Anthropic settings in the optional upstream starter kit do not configure this backend. Legacy internal names and extension labels still use Off-Ramp while the new product design is integrated.
 
-## 关键原则
+## Verify
 
-最强策略不是“集成最多 sponsor”，而是：**一个明确用户 + 一个原生环境 + 一个完整动作 + 一个可见且可验证的结果**。环境必须改变 agent 能看到什么或能做什么；如果把它搬回普通聊天框仍完全一样，主题契合度不会高。
+```sh
+npm test
+npm run typecheck
+npm run build:figma
+```
+
+Optional: `npx tsx backend/smoke.ts` makes billable model and search calls with explicitly synthetic context. It is separate from the offline test suite.
+
+## Product and design
+
+- [Current design brief and implementation gaps](docs/hold-that-thought-design-brief.md)
+- [Two-minute pitch and demonstration](docs/demo-script.md)
+- [Implementation status and acceptance checks](docs/implementation-status.md)
+- [Privacy and data boundaries](docs/privacy-and-data-boundaries.md)
+
+The current research task searches public sources. It does not edit Figma, send messages, run project tests, or access Calendar/Gmail. Figma metadata does not establish visual design quality or reveal a user's intention; users confirm the open question and next step.
+
+## Repository scope
+
+This repository contains product source, tests, setup instructions, and current design documentation. Event preparation, sponsor research, earlier brainstorming, and superseded working notes remain local and are excluded from Git. Secrets, local user state, dependencies, and generated Figma code are also excluded.
+
+The optional [CopilotKit starter kit](https://github.com/CopilotKit/agents-everywhere-starter-kit) is a separate, ignored local reference; it is not required to clone or run this application. Preserve upstream license notices when reusing its code.

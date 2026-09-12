@@ -1,38 +1,15 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const core = require("../core.js");
-
-test("waits while the user is still typing", () => {
-  const now = 20_000;
-  const state = core.evaluate({ ...core.initialState(0), thresholdSeconds: 10, lastKeyAt: now - 100, lastActivityAt: now - 100 }, now);
-  assert.equal(state.recentTyping, true);
-  assert.equal(state.possibleBreakpoint, false);
-  assert.equal(state.mode, "considering");
-});
-
-test("finds a breakpoint after sustained work and a pause", () => {
-  const now = 20_000;
-  const state = core.evaluate({ ...core.initialState(0), thresholdSeconds: 10, idleState: "active", lastActivityAt: now - 2000 }, now);
-  assert.equal(state.possibleBreakpoint, true);
-  assert.equal(state.mode, "gentle_nudge");
-});
-
-test("later adapts the next intervention to checkpoint mode", () => {
-  const delayed = core.applyResponse({ ...core.initialState(0), mode: "gentle_nudge" }, "later", 1000);
-  const state = core.evaluate({ ...delayed, thresholdSeconds: 10, lastActivityAt: 1000, tabSwitches: 1 }, 12_000);
-  assert.equal(state.laterCount, 1);
-  assert.equal(state.mode, "checkpoint");
-});
-
-test("take break saves only lightweight tab context", () => {
-  const state = core.applyResponse({ ...core.initialState(0), mode: "checkpoint", currentTabTitle: "Draft", currentTabUrl: "https://example.com" }, "take_break", 10);
-  assert.equal(state.mode, "on_break");
-  assert.deepEqual(state.checkpoint, { title: "Draft", url: "https://example.com", note: "Return to the active tab and continue from the last visible task.", savedAt: 10 });
-});
-
-test("activity aggregation counts events but stores no key content", () => {
-  const state = core.mergeActivity(core.initialState(0), { clicks: 2, keypresses: 8, scrollEvents: 1, lastActivityAt: 100 }, 100);
-  assert.equal(state.clicks, 2);
-  assert.equal(state.keypresses, 8);
-  assert.equal("keys" in state, false);
-});
+const test=require("node:test"),assert=require("node:assert/strict"),core=require("../core.js");
+const ready=(overrides={})=>({...core.initialState(1),activeSeconds:2400,lastEvaluatedAt:100000,idleState:"active",lastActivityAt:80000,...overrides});
+test("separates work eligibility from interruptibility",()=>{const s=core.evaluate(ready({lastKeyAt:99500,lastActivityAt:99500}),100000);assert.equal(s.needScore,1);assert.equal(s.opportunityScore,0);assert.equal(s.mode,"considering");});
+test("offers once after work and a natural pause",()=>{let s=core.evaluate(ready(),100000);assert.equal(s.mode,"gentle_nudge");assert.equal(s.dailyInvitations,1);s=core.evaluate(s,101000);assert.equal(s.dailyInvitations,1);});
+test("a past tab switch cannot override active typing",()=>{const s=core.evaluate(ready({tabSwitches:25,lastKeyAt:99999,lastActivityAt:99999}),100000);assert.equal(s.possibleBreakpoint,false);});
+test("wall time alone does not count as active work",()=>{const s=core.evaluate(core.initialState(1),86400000);assert.equal(s.activeSeconds,0);assert.equal(s.mode,"quiet");});
+test("idle reset requires a sustained natural break",()=>{const s=core.evaluate(ready({idleState:"idle",idleSince:1}),130000);assert.equal(s.activeSeconds,0);assert.equal(s.mode,"quiet");});
+test("Later never escalates to an intrusive checkpoint",()=>{const s=core.applyResponse(ready({mode:"gentle_nudge",sessionInvited:true}),"later",100000);assert.equal(s.cooldownUntil,100000+15*60000);assert.equal(core.evaluate(s,110000).mode,"quiet");assert.equal(s.activeSeconds,2400);});
+test("two dismissals extend rather than escalate interruption",()=>{let s=core.applyResponse(ready(),"dismiss",100000);s=core.applyResponse(s,"dismiss",110000);assert.equal(s.cooldownUntil,110000+60*60000);});
+test("daily cap suppresses automatic invitation",()=>{assert.equal(core.evaluate(ready({dailyInvitations:4}),100000).mode,"quiet");});
+test("busy and protected pages suppress invitations",()=>{for(const fields of [{busyUntil:110000},{blocked:true},{enabled:false}])assert.equal(core.evaluate(ready(fields),100000).mode,"quiet");});
+test("break requires confirmed intent and preserves an executable anchor",()=>{const initial=ready({currentTabTitle:"Draft",currentTabUrl:"https://example.com/",currentTabId:17});assert.notEqual(core.applyResponse(initial,"take_break",100000).mode,"on_break");const s=core.applyResponse(initial,"take_break",100000,{note:"Check tablet layout"});assert.equal(s.checkpoint.tabId,17);assert.equal(s.checkpoint.note,"Check tablet layout");assert.equal(s.mode,"on_break");});
+test("resume is followed by an explicit fresh session",()=>{const s=core.applyResponse(ready(),"continue",100000);assert.equal(s.activeSeconds,0);assert.equal(s.sessionInvited,false);});
+test("sanitizes URL secrets and rejects executable schemes",()=>{assert.equal(core.safeUrl("https://a.test/path?token=secret#private"),"https://a.test/path");assert.equal(core.safeUrl("javascript:alert(1)"),"");assert.equal(core.protectedUrl("https://a.test/checkout"),true);});
+test("activity aggregation stores counts only and rejects future timestamps",()=>{const s=core.mergeActivity(core.initialState(1),{clicks:2,keypresses:8,scrollEvents:1,lastActivityAt:999999,keys:"private"},100);assert.equal(s.keypresses,8);assert.equal("keys" in s,false);assert.equal(s.lastActivityAt,0);});

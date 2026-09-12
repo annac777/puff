@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2019","module":"none","strict":true,"skipLibCheck":true,"types":["@figma/plugin-typings"],"lib":["ES2019"],"outFile":"code.js"},"include":["code.ts"]}

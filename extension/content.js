@@ -4,20 +4,22 @@
   const counts = { clicks: 0, keypresses: 0, scrollEvents: 0, lastActivityAt: Date.now(), lastKeyAt: 0 };
   let lastScrollAt = 0;
   let latestState;
+  let manuallyHidden = false;
 
   document.addEventListener("click", event => {
-    if (event.target.closest?.("#off-ramp-root")) return;
+    if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
     counts.clicks += 1;
     counts.lastActivityAt = Date.now();
   }, { capture: true, passive: true });
 
   document.addEventListener("keydown", event => {
-    if (event.target.closest?.("#off-ramp-root")) return;
+    if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
     counts.keypresses += 1;
     counts.lastKeyAt = counts.lastActivityAt = Date.now();
   }, { capture: true, passive: true });
 
   document.addEventListener("scroll", () => {
+    if (!latestState?.enabled || latestState.blocked) return;
     const now = Date.now();
     if (now - lastScrollAt < 500) return;
     lastScrollAt = now;
@@ -30,13 +32,13 @@
   root.innerHTML = `
     <button class="or-close" aria-label="Hide Off-Ramp">×</button>
     <div class="or-pet" aria-hidden="true"><span></span><i></i></div>
-    <div class="or-copy"><small>OFF-RAMP · LOCAL ONLY</small><strong></strong><p></p></div>
+    <div class="or-copy"><small>OFF-RAMP · CONTINUITY</small><strong></strong><p></p></div>
     <div class="or-metrics"></div>
     <div class="or-checkpoint"></div>
     <div class="or-actions"></div>`;
   document.documentElement.appendChild(root);
 
-  root.querySelector(".or-close").addEventListener("click", () => root.classList.add("or-hidden"));
+  root.querySelector(".or-close").addEventListener("click", () => { manuallyHidden=true; root.classList.add("or-hidden"); chrome.runtime.sendMessage({type:"USER_RESPONSE",action:"dismiss"}).catch(()=>{}); });
 
   function actionButton(label, action, primary = false) {
     const button = document.createElement("button");
@@ -58,20 +60,25 @@
       ? `Held: ${state.checkpoint.title || "this page"}` : "";
     const actions = root.querySelector(".or-actions");
     actions.replaceChildren();
-    if (intervention.primaryAction === "take_break") actions.append(actionButton("Take a break", "take_break", true));
-    if (intervention.primaryAction === "resume") actions.append(actionButton("Resume", "resume", true));
-    if (intervention.secondaryAction === "later") actions.append(actionButton("Later", "later"));
+    if (["gentle_nudge", "checkpoint", "quiet", "considering"].includes(state.mode)) {
+      const open=document.createElement("button");open.className="or-primary";open.textContent="Save my place";
+      open.onclick=()=>chrome.runtime.sendMessage({type:"OPEN_PANEL"});actions.append(open);
+    }
+    if (["on_break", "resume"].includes(state.mode)) actions.append(actionButton("Resume saved tab", "resume", true));
+    if (state.mode === "gentle_nudge") actions.append(actionButton("Not yet", "later"));
+    if (state.mode === "resume") actions.append(actionButton("Continue working", "continue"));
+    root.classList.toggle("or-hidden",manuallyHidden || !state.enabled || state.blocked);
   }
 
   chrome.runtime.onMessage.addListener(message => {
     if (message.type === "OFF_RAMP_STATE") render(message.state, message.intervention);
-    if (message.type === "OFF_RAMP_SHOW") root.classList.remove("or-hidden");
+    if (message.type === "OFF_RAMP_SHOW") { manuallyHidden=false; if(latestState?.enabled&&!latestState.blocked)root.classList.remove("or-hidden"); }
   });
 
   setInterval(() => {
     const delta = { ...counts };
     counts.clicks = counts.keypresses = counts.scrollEvents = 0;
-    chrome.runtime.sendMessage({ type: "ACTIVITY_DELTA", delta }).then(response => {
+    chrome.runtime.sendMessage({ type: "ACTIVITY_DELTA", delta, hidden: document.hidden, fullscreen: !!document.fullscreenElement }).then(response => {
       if (response?.ok) render(response.state, response.intervention);
     }).catch(() => {});
   }, 1000);

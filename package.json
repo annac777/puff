@@ -2,6 +2,11 @@
   "name": "adaptive-off-ramp-agent",
   "private": true,
   "scripts": {
-    "test": "node --test extension/tests/*.test.js"
-  }
+    "test": "node --test extension/tests/*.test.js && tsx --test backend/tests/*.test.ts",
+    "dev": "tsx backend/server.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p figma-adapter/tsconfig.json",
+    "build:figma": "tsc -p figma-adapter/tsconfig.json"
+  },
+  "dependencies": {"@openai/agents":"0.17.2","openai":"7.15.0","zod":"^4.1.0"},
+  "devDependencies": {"tsx":"^4.20.5","typescript":"^5.7.0","@types/node":"^22.10.0","@figma/plugin-typings":"^1.0.0"}
 }
