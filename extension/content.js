@@ -1,89 +1,76 @@
 (() => {
   if (window.top !== window || document.getElementById("off-ramp-root")) return;
-
   const counts = { clicks: 0, keypresses: 0, scrollEvents: 0, lastActivityAt: Date.now(), lastKeyAt: 0 };
-  let lastScrollAt = 0;
-  let latestState;
-  let manuallyHidden = false;
-
-  document.addEventListener("click", event => {
-    if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
-    counts.clicks += 1;
-    counts.lastActivityAt = Date.now();
-  }, { capture: true, passive: true });
-
-  document.addEventListener("keydown", event => {
-    if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
-    counts.keypresses += 1;
-    counts.lastKeyAt = counts.lastActivityAt = Date.now();
-  }, { capture: true, passive: true });
-
-  document.addEventListener("scroll", () => {
-    if (!latestState?.enabled || latestState.blocked) return;
-    const now = Date.now();
-    if (now - lastScrollAt < 500) return;
-    lastScrollAt = now;
-    counts.scrollEvents += 1;
-    counts.lastActivityAt = now;
-  }, { capture: true, passive: true });
-
+  let latestState, activityTimer, lastScrollAt = 0, panelFrame;
   const root = document.createElement("aside");
   root.id = "off-ramp-root";
-  root.innerHTML = `
-    <button class="or-close" aria-label="Hide Off-Ramp">×</button>
-    <div class="or-pet" aria-hidden="true"><span></span><i></i></div>
-    <div class="or-copy"><small>OFF-RAMP · CONTINUITY</small><strong></strong><p></p></div>
-    <div class="or-metrics"></div>
-    <div class="or-checkpoint"></div>
-    <div class="or-actions"></div>`;
+  root.classList.add("or-hidden");
   document.documentElement.appendChild(root);
 
-  root.querySelector(".or-close").addEventListener("click", () => { manuallyHidden=true; root.classList.add("or-hidden"); chrome.runtime.sendMessage({type:"USER_RESPONSE",action:"dismiss"}).catch(()=>{}); });
-
-  function actionButton(label, action, primary = false) {
-    const button = document.createElement("button");
-    button.textContent = label;
-    button.className = primary ? "or-primary" : "or-secondary";
-    button.addEventListener("click", () => chrome.runtime.sendMessage({ type: "USER_RESPONSE", action }));
-    return button;
+  function disconnect() {
+    clearInterval(activityTimer);
+    try { chrome.runtime.onMessage.removeListener(onRuntimeMessage); } catch {}
+    root.remove();
   }
-
-  function render(state, intervention) {
+  function sendMessage(message) {
+    try {
+      if (!chrome.runtime.id) { disconnect(); return Promise.resolve(null); }
+      return chrome.runtime.sendMessage(message).catch(() => {
+        if (!chrome.runtime.id) disconnect();
+        return null;
+      });
+    } catch { disconnect(); return Promise.resolve(null); }
+  }
+  function expandPanel() {
+    if (!latestState?.enabled || latestState.blocked) return;
+    if (!panelFrame) {
+      // getURL throws once the extension is reloaded under a stale content script.
+      let src;
+      try { src = chrome.runtime.id && chrome.runtime.getURL("app/index.html?floating=1"); } catch { src = null; }
+      if (!src) { disconnect(); return; }
+      panelFrame = document.createElement("iframe");
+      panelFrame.className = "or-panel-frame";
+      panelFrame.title = "Puff handoff panel";
+      panelFrame.src = src;
+      root.appendChild(panelFrame);
+    }
+    root.classList.remove("or-hidden");
+    root.classList.add("or-expanded");
+  }
+  function render(state) {
     latestState = state;
     root.dataset.mode = state.mode;
-    root.querySelector("strong").textContent = intervention.title;
-    root.querySelector("p").textContent = intervention.message;
-    root.querySelector(".or-metrics").textContent =
-      `${state.sessionSeconds}s · ${state.keypresses} keys · ${state.clicks} clicks · ${state.scrollEvents} scrolls · ${state.tabSwitches} tabs · ${state.idleState}`;
-    const checkpoint = root.querySelector(".or-checkpoint");
-    checkpoint.textContent = state.checkpoint && ["on_break", "resume"].includes(state.mode)
-      ? `Held: ${state.checkpoint.title || "this page"}` : "";
-    const actions = root.querySelector(".or-actions");
-    actions.replaceChildren();
-    if (["gentle_nudge", "checkpoint", "quiet", "considering"].includes(state.mode)) {
-      const open=document.createElement("button");open.className="or-primary";open.textContent="Save my place";
-      open.onclick=()=>chrome.runtime.sendMessage({type:"OPEN_PANEL"});actions.append(open);
-    }
-    if (["on_break", "resume"].includes(state.mode)) actions.append(actionButton("Resume saved tab", "resume", true));
-    if (state.mode === "gentle_nudge") actions.append(actionButton("Not yet", "later"));
-    if (state.mode === "resume") actions.append(actionButton("Continue working", "continue"));
-    root.classList.toggle("or-hidden",manuallyHidden || !state.enabled || state.blocked);
+    root.classList.toggle("or-hidden", !state.enabled || state.blocked);
+    // This build has no collapsed launcher. Mount directly in the current page.
+    if (state.enabled && !state.blocked) expandPanel();
   }
-
-  chrome.runtime.onMessage.addListener(message => {
-    if (message.type === "OFF_RAMP_STATE") render(message.state, message.intervention);
-    if (message.type === "OFF_RAMP_SHOW") { manuallyHidden=false; if(latestState?.enabled&&!latestState.blocked)root.classList.remove("or-hidden"); }
+  document.addEventListener("click", event => {
+    if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
+    counts.clicks++; counts.lastActivityAt = Date.now();
+  }, { capture:true, passive:true });
+  document.addEventListener("keydown", event => {
+    if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
+    counts.keypresses++; counts.lastKeyAt = counts.lastActivityAt = Date.now();
+  }, { capture:true, passive:true });
+  document.addEventListener("scroll", () => {
+    if (!latestState?.enabled || latestState.blocked || Date.now()-lastScrollAt<500) return;
+    lastScrollAt=Date.now(); counts.scrollEvents++; counts.lastActivityAt=lastScrollAt;
+  }, { capture:true, passive:true });
+  function onRuntimeMessage(message) {
+    if (message.type === "OFF_RAMP_STATE") render(message.state);
+    if (message.type === "OFF_RAMP_EXPAND" || message.type === "OFF_RAMP_SHOW") expandPanel();
+    if (message.type === "OFF_RAMP_PANEL_SIZE") root.classList.toggle("or-wide", message.expanded);
+  }
+  chrome.runtime.onMessage.addListener(onRuntimeMessage);
+  // The embedded widget tells us how much room it needs: cloud-sized when closed, panel-sized when open.
+  window.addEventListener("message", event => {
+    if (event.source !== panelFrame?.contentWindow) return;
+    if (event.data?.type === "PUFF_FRAME") root.classList.toggle("or-open", !!event.data.expanded);
   });
-
-  setInterval(() => {
+  activityTimer = setInterval(() => {
     const delta = { ...counts };
     counts.clicks = counts.keypresses = counts.scrollEvents = 0;
-    chrome.runtime.sendMessage({ type: "ACTIVITY_DELTA", delta, hidden: document.hidden, fullscreen: !!document.fullscreenElement }).then(response => {
-      if (response?.ok) render(response.state, response.intervention);
-    }).catch(() => {});
-  }, 1000);
-
-  chrome.runtime.sendMessage({ type: "GET_STATE" }).then(response => {
-    if (response?.ok) render(response.state, response.intervention);
-  }).catch(() => {});
+    sendMessage({type:"ACTIVITY_DELTA",delta,hidden:document.hidden,fullscreen:!!document.fullscreenElement}).then(r => {if(r?.ok)render(r.state);});
+  },1000);
+  sendMessage({type:"GET_STATE"}).then(r => {if(r?.ok)render(r.state);});
 })();

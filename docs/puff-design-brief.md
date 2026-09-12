@@ -1,8 +1,8 @@
-# Hold That Thought
+# Puff
 
 Design revision brief for Hyeji — September 12, 2026
 
-Working name: **Hold That Thought**
+Product name: **Puff**
 
 **An agent that keeps your place—and moves one step forward while you step away.**
 
@@ -170,7 +170,7 @@ Opening:
 
 Product explanation:
 
-> Stopping is expensive. You lose the page, the question, the tiny next step—and delegating to an agent usually means stopping again to explain all of that. Hold That Thought preserves your place, helps you confirm one bounded handoff, and returns the result when you come back.
+> Stopping is expensive. You lose the page, the question, the tiny next step—and delegating to an agent usually means stopping again to explain all of that. Puff preserves your place, helps you confirm one bounded handoff, and returns the result when you come back.
 
 Demo narration, to use once the integration gates pass:
 

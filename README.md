@@ -1,8 +1,8 @@
-# Hold That Thought
+# Puff
 
 An agent that keeps your place and moves one approved task forward while you step away.
 
-Leaving unfinished work means remembering the page, the open question, and the next step. Hold That Thought helps you hand off that moment: review the context, confirm your intention, save your place, and optionally approve a small public research task. Return to a sourced result and the next step you chose.
+Leaving unfinished work means remembering the page, the open question, and the next step. Puff helps you hand off that moment: review the context, confirm your intention, save your place, and optionally approve a small public research task. Return to a sourced result and the next step you chose.
 
 ## Current build
 
@@ -27,13 +27,13 @@ npm run build:figma
 npm run dev
 ```
 
-1. Open `http://127.0.0.1:4318` and choose **Connect local backend**.
+1. For one-time engineering setup, open `http://127.0.0.1:4318/?developer=1` and choose **Connect local backend**. The normal page deliberately has no developer settings entry.
 2. In Chrome, open `chrome://extensions`, enable Developer mode, and choose **Load unpacked**. Select this repository's `extension` folder. Reload an existing installation and refresh test pages after changes.
-3. Pair the extension with the local backend using the pairing token from connection settings.
+3. Open `chrome-extension://<installed-extension-id>/panel.html?developer=1` explicitly for engineering setup and pair using that token. Do not show this page during the demo. Refresh the working webpage after pairing; normal extension navigation remains inside its floating panel.
 4. For Figma, follow the [adapter setup guide](figma-adapter/README.md), then explicitly enable metadata sharing.
 5. Review context, approve model sharing, edit your next step, and save a checkpoint. Enter and approve a public research question if you want to delegate work.
 
-Keys belong only in the ignored root `.env`. `OFFRAMP_PROVIDER` supports `openai` or `openrouter`; `OFFRAMP_MODEL` selects the model. Anthropic settings in the optional upstream starter kit do not configure this backend. Legacy internal names and extension labels still use Off-Ramp while the new product design is integrated.
+Keys belong only in the ignored root `.env`. `OFFRAMP_PROVIDER` supports `openai` or `openrouter`; `OFFRAMP_MODEL` selects the model. Anthropic settings in the optional upstream starter kit do not configure this backend. The product name is Puff. Legacy internal identifiers remain unchanged for compatibility.
 
 ## Verify
 
@@ -47,7 +47,7 @@ Optional: `npx tsx backend/smoke.ts` makes billable model and search calls with 
 
 ## Product and design
 
-- [Current design brief and implementation gaps](docs/hold-that-thought-design-brief.md)
+- [Current design brief and implementation gaps](docs/puff-design-brief.md)
 - [Two-minute pitch and demonstration](docs/demo-script.md)
 - [Implementation status and acceptance checks](docs/implementation-status.md)
 - [Privacy and data boundaries](docs/privacy-and-data-boundaries.md)

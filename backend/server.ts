@@ -32,13 +32,14 @@ export function createApp(directory:string,dependencies={interpret,research}) {
     res.setHeader('Access-Control-Allow-Headers','Authorization,Content-Type');res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
     if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}
     const route=new URL(req.url||'/',`http://${host}`).pathname;
-    if(req.method==='GET'&&['/','/panel.js','/panel.css'].includes(route)) {
+    if(req.method==='GET'&&['/','/panel.js','/panel.css','/assets/puff.svg','/assets/puff-mark.svg'].includes(route)) {
       const file=route==='/'?'panel.html':route.slice(1);
-      res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'"});
+      res.writeHead(200,{'Content-Type':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'"});
       return res.end(fs.readFileSync(path.join(root,'extension',file)));
     }
-    // Pairing requires a same-origin page; remote origins cannot retrieve the local secret.
-    if(route==='/pair'&&req.method==='POST'&&(!origin||origin===`http://${host}`)) return send(200,{token});
+    // Pairing is limited to the local dashboard and to an installed extension: both already run on
+    // this machine. Websites cannot forge either Origin, so a remote page still cannot take the token.
+    if(route==='/pair'&&req.method==='POST'&&(!origin||origin===`http://${host}`||/^chrome-extension:\/\/[a-p]{32}$/.test(origin))) return send(200,{token});
     if(!sameToken((req.headers.authorization||'').replace(/^Bearer /,''))) return send(401,{error:'Pair this client with the local backend first.'});
     try {
       let body:any={};
@@ -55,8 +56,19 @@ export function createApp(directory:string,dependencies={interpret,research}) {
       }
       if(route==='/disconnect-figma') {if(data.context.figma?.sessionId===body.sessionId)data.context.figma=null;persist();return send(200,{ok:true});}
       if(route==='/browser') {
-        const input=z.object({title:z.string().max(200),url:z.string().url().max(2000),tabId:z.number().optional()}).parse(body);
-        const u=new URL(input.url);if(!['http:','https:'].includes(u.protocol))throw new Error('Unsupported URL');u.search='';u.hash='';u.username='';u.password='';
+        const input=z.object({title:z.string().max(200),url:z.string().url().max(2000),tabId:z.number().optional(),excerpt:z.string().max(8000).optional(),
+          tabs:z.array(z.object({title:z.string().max(150),url:z.string().url().max(2000),active:z.boolean().optional()})).max(20).optional()}).parse(body);
+        const u=new URL(input.url);if(!['http:','https:'].includes(u.protocol))throw new Error('Unsupported URL');
+        // Query strings can carry credentials, so drop everything except the few parameters that
+        // say WHERE in a document the user is. Values are length-capped and format-checked.
+        const keep=new URLSearchParams();
+        for(const name of ['gid','node-id','tab','page_id','pli']) {
+          const value=u.searchParams.get(name);
+          if(value&&value.length<=40&&/^[A-Za-z0-9:_-]+$/.test(value))keep.set(name,value);
+        }
+        u.search=keep.toString();
+        u.hash=/^#(gid=[0-9]+|[0-9]+)$/.test(u.hash)?u.hash:'';
+        u.username='';u.password='';
         data.context.browser={...input,url:u.href};persist();return send(200,{ok:true});
       }
       if(route==='/draft') {

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="7 6 83 81" fill="none">
+  <title>Puff</title>
+  <desc>Puff, a sky-blue smiling cloud with a small golden star. Transparent background.</desc>
+  <g transform="translate(0 8)">
+    <path d="M80 0 82.1 5.2 87.7 5.6 83.4 9.2 84.8 14.6 80 11.6 75.2 14.6 76.6 9.2 72.3 5.6 77.9 5.2Z" fill="#F5C553"/>
+    <g fill="#7EC8E3">
+      <ellipse cx="50" cy="57" rx="37" ry="19"/>
+      <circle cx="25" cy="42" r="16"/>
+      <circle cx="50" cy="32" r="20"/>
+      <circle cx="73" cy="42" r="15"/>
+    </g>
+    <ellipse cx="50" cy="72" rx="31" ry="4.5" fill="#1A4658" opacity="0.06"/>
+    <g fill="#1A4658">
+      <circle cx="40" cy="42" r="4.5"/>
+      <circle cx="60" cy="42" r="4.5"/>
+    </g>
+    <g fill="#FFFFFF" opacity="0.85">
+      <circle cx="38.5" cy="40.5" r="1.8"/>
+      <circle cx="58.5" cy="40.5" r="1.8"/>
+    </g>
+    <path d="M43 52Q50 57 57 52" stroke="#1A4658" stroke-width="2" stroke-linecap="round" opacity="0.65"/>
+  </g>
+</svg>

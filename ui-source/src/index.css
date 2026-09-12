@@ -1,0 +1,140 @@
+/* Self-hosted: extension pages block remote font hosts under MV3 CSP. */
+@font-face{font-family:'Outfit';src:url('../fonts/outfit.woff2') format('woff2');font-weight:300 700;font-display:swap}
+@font-face{font-family:'DM Sans';src:url('../fonts/dmsans.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@import 'tailwindcss';
+
+/* ── Puff ambient float / breathe ─────────────────────────────────────────── */
+@keyframes cloudFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-7px); }
+}
+
+@keyframes cloudBreathe {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.04); }
+}
+
+/* ── Generic atmospheric pulse (glow, dot-pulses shared) ─────────────────── */
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.28; }
+  50%       { opacity: 0.72; }
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 0.9; transform: scale(1.25); }
+}
+
+/* ── State 2 — considering: wisps drift inward ───────────────────────────── */
+/* Left-side wisps drift slightly right (toward Puff center) */
+@keyframes gatherL {
+  0%, 100% { opacity: 0.32; transform: translateX(0px) scaleX(1); }
+  50%       { opacity: 0.65; transform: translateX(5px) scaleX(0.9); }
+}
+
+/* Right-side wisps drift slightly left (toward Puff center) */
+@keyframes gatherR {
+  0%, 100% { opacity: 0.28; transform: translateX(0px) scaleX(1); }
+  50%       { opacity: 0.58; transform: translateX(-5px) scaleX(0.9); }
+}
+
+/* ── State 3 / 6 — sun reveal (gentle_nudge & resume) ───────────────────── */
+@keyframes sunReveal {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── State 4 — checkpoint chips settle into place ────────────────────────── */
+@keyframes chipsSettle {
+  from { opacity: 0; transform: translateY(5px) scale(0.88); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* ── State 5 — on_break: wind wisps drift right (agent working) ─────────── */
+@keyframes windDrift {
+  0%   { transform: translateX(-10px); opacity: 0;    }
+  12%  {                               opacity: 0.55; }
+  82%  {                               opacity: 0.40; }
+  100% { transform: translateX(120px); opacity: 0;    }
+}
+
+/* ── Screen-level entry slide ────────────────────────────────────────────── */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.93) translateY(8px); }
+  65%  {             transform: scale(1.015) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1)     translateY(0); }
+}
+
+@keyframes panelExpand {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); transform-origin: bottom right; }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   transform-origin: bottom right; }
+}
+
+/* ── tokenFloat (kept for potential use) ─────────────────────────────────── */
+@keyframes tokenFloat {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50%       { transform: translateY(-5px) rotate(1deg); }
+}
+
+/* ── Settings dot float ──────────────────────────────────────────────────── */
+@keyframes dotFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-3px); }
+}
+
+/* ── Sweat drop bob ──────────────────────────────────────────────────────── */
+@keyframes sweatDrop {
+  0%, 100% { transform: translateY(0px); opacity: 0.7; }
+  40%       { transform: translateY(3px); opacity: 0.9; }
+  60%       { transform: translateY(6px); opacity: 0.4; }
+  70%       { transform: translateY(6px); opacity: 0; }
+  75%       { transform: translateY(0px); opacity: 0; }
+  80%       { opacity: 0.7; }
+}
+
+/* ── Rain drops fall ─────────────────────────────────────────────────────── */
+@keyframes rainFall {
+  0%   { transform: translateY(-8px); opacity: 0;   }
+  15%  {                              opacity: 0.6;  }
+  80%  {                              opacity: 0.45; }
+  100% { transform: translateY(10px); opacity: 0;   }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+/* Static visual differences communicate each state; motion is suppressed.   */
+/* sun, glow, chips, and wisps remain visible at their settled opacity.       */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+  }
+
+  /* windDrift wisps jump to their mid-drift position so they stay visible */
+  @keyframes windDrift {
+    0%, 100% { transform: translateX(50px); opacity: 0.38; }
+  }
+
+  /* chips and sun appear immediately without transition */
+  @keyframes chipsSettle {
+    0%, 100% { opacity: 1; transform: none; }
+  }
+  @keyframes sunReveal {
+    0%, 100% { opacity: 1; transform: none; }
+  }
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #F7F5F2;
+}
+
+html,body,#root{background:transparent!important;margin:0;height:100%;overflow:hidden}
+body{padding:24px 24px 24px 24px;box-sizing:border-box}

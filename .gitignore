@@ -23,3 +23,13 @@ figma-adapter/code.js
 /docs/collaboration-contract.md
 /docs/ui-requirements-for-hyeji.md
 /design/README.md
+
+# Designer's UI source builds locally; only the source and the built bundle in extension/app ship.
+ui-source/node_modules/
+ui-source/dist/
+ui-source/.figma/
+
+# Internal working notes from the build day.
+/HANDOFF-FABLE.md
+/docs/handoff-for-hyeji-ko.md
+/docs/ui-test-report-2026-09-12.md

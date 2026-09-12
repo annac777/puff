@@ -1,4 +1,4 @@
-# Hold That Thought — two-minute pitch
+# Puff — two-minute pitch
 
 ## 0:00–0:20 — Hook
 
@@ -8,7 +8,7 @@ You've probably said, ‘I'll leave as soon as I finish this thought.’ But the
 
 ## 0:20–0:40 — Product
 
-“Hold That Thought helps you hand off unfinished work. It saves where you are, lets you confirm what comes next, and takes on one approved research task while you step away.”
+“Puff helps you hand off unfinished work. It saves where you are, lets you confirm what comes next, and takes on one approved research task while you step away.”
 
 ## 0:40–1:30 — Show one complete workflow
 

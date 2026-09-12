@@ -1,4 +1,4 @@
-# Hold That Thought implementation status
+# Puff implementation status
 
 Updated September 12, 2026.
 

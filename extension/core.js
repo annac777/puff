@@ -4,7 +4,7 @@
   function initialState(now=Date.now()){return {version:2,sessionStartedAt:now,sessionSeconds:0,lastEvaluatedAt:now,activeSeconds:0,
     idleState:"unknown",idleSince:null,clicks:0,keypresses:0,scrollEvents:0,tabSwitches:0,currentTabTitle:"",currentTabUrl:"",currentTabId:null,
     lastActivityAt:0,lastKeyAt:0,lastTabChangeAt:0,designLastChangeAt:0,designConnected:false,recentTyping:false,possibleBreakpoint:false,
-    mode:"quiet",laterCount:0,cooldownUntil:0,responseHistory:[],checkpoint:null,demoMode:false,thresholdSeconds:2400,
+    mode:"quiet",laterCount:0,cooldownUntil:0,responseHistory:[],checkpoint:null,demoMode:false,thresholdSeconds:1800,
     dailyInvitations:0,day:day(now),sessionInvited:false,enabled:true,blocked:false,busyUntil:0,needScore:0,opportunityScore:0,reason:"Waiting for activity"};}
   function evaluate(state,now=Date.now()){
     const next={...initialState(now),...state};
