@@ -22,6 +22,8 @@ The selected implementation prototype is **Adaptive Break / Off-Ramp Agent**. It
 
 Design and engineering should use [docs/interaction-scenarios.md](docs/interaction-scenarios.md) as the shared Figma-to-code scenario contract.
 
+The next milestone is the full agentic loop: understand the user's current work, understand schedule constraints, choose an appropriate intervention moment, ask permission, complete one bounded task during the break, and report back. The task menu and approval boundaries are defined in [docs/product-brief.md](docs/product-brief.md).
+
 ## 当前准备状态
 
 - [x] 官方活动页、handbook、赛程、评分和奖项已核对

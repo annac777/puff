@@ -37,3 +37,12 @@ Title/URL collection is less invasive than page-body access but is still browsin
 - Content scripts cannot run on `chrome://` pages, the Chrome Web Store and other restricted pages.
 - Cross-origin frames and unusual embedded surfaces may not expose events to the top-level content script.
 - `chrome.idle` reports device idle state, not fatigue.
+
+## Future integrations
+
+Calendar, Gmail and research integrations are not yet implemented. When added, each connection must be opt-in and scoped to the minimum data required.
+
+- Calendar may be read to understand timing and constraints. Creating, moving or cancelling events requires explicit approval.
+- Gmail may be searched or summarized after approval. Drafting and sending are separate actions; sending always requires a final confirmation.
+- Research may use the approved question and relevant context. Results must include sources and state uncertainty.
+- The agent must keep an action log and make it clear whether something was observed, inferred, drafted or actually sent.
