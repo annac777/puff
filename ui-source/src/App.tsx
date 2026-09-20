@@ -930,10 +930,9 @@ function PuffPanel({ screen, onMinimize, children }: {
     on_break: 'Away', resume: 'Welcome back',
   }
   return (
-    <div className="w-80 bg-[#F7F5F2] rounded-2xl flex flex-col overflow-hidden isolate"
+    <div className="w-80 bg-[#F7F5F2] rounded-2xl shadow-2xl flex flex-col overflow-hidden isolate"
       style={{
         border: '1px solid rgba(255,255,255,0.72)',
-        boxShadow: '0 8px 18px -6px rgba(26,48,53,0.18), 0 2px 6px rgba(26,48,53,0.08)',
         maxHeight: inExtension ? 'calc(100vh - 96px)' : 'min(540px, 80vh)',
         animation: 'panelExpand 0.2s ease-out forwards',
       }}>
