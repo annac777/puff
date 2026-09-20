@@ -46,3 +46,5 @@
 #off-ramp-root.or-expanded.or-open{width:min(384px,calc(100vw - 16px))!important;height:min(700px,calc(100vh - 16px))!important}
 #off-ramp-root.or-expanded> :not(.or-panel-frame){display:none!important}
 #off-ramp-root.or-expanded>.or-panel-frame{display:block!important;width:100%!important;height:100%!important;border:0!important;margin:0!important;padding:0!important;background:transparent!important;color-scheme:normal}
+#off-ramp-root.or-dragging{transition:none!important}
+#off-ramp-root.or-dragging .or-panel-frame{pointer-events:none!important}

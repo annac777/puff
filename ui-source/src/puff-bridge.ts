@@ -1,6 +1,8 @@
 // Connects Hyeji's UI to the real Puff backend through the extension's background worker.
 // Nothing here invents content: every field is filled from a model or tool result.
 
+import { useRef } from 'react'
+
 declare const chrome: any
 
 export const inExtension = typeof chrome !== 'undefined' && !!chrome?.runtime?.id
@@ -137,4 +139,51 @@ export async function restoreTab(anchor: { title: string; url: string } | null, 
   if (!inExtension) return
   const r = await chrome.runtime.sendMessage({ type: 'RESTORE_TAB', anchor, fileUrl: fallbackUrl })
   if (!r?.ok) throw new Error(r?.error || 'Could not reopen your saved page.')
+}
+
+/**
+ * Dragging the widget means moving the host element, which lives in the page, not here.
+ * Pointer capture keeps events coming to this document once the pointer leaves the frame, so we
+ * forward deltas instead of juggling pointer-events on the iframe. State lives in refs because a
+ * re-render mid-drag would otherwise reset a closure and strand the gesture.
+ */
+export function useDragHandle(onDragged?: (dragged: boolean) => void) {
+  const DRAG_THRESHOLD = 4
+  const state = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null)
+
+  const post = (type: string, body: Record<string, number> = {}) => {
+    try { window.parent.postMessage({ type, ...body }, '*') } catch { /* no host */ }
+  }
+
+  return {
+    onPointerDown(e: React.PointerEvent) {
+      if (!inExtension || e.button !== 0) return
+      state.current = { x: e.screenX, y: e.screenY, id: e.pointerId, moved: false }
+      onDragged?.(false)
+      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* no capture */ }
+      post('PUFF_DRAG_START')
+    },
+    onPointerMove(e: React.PointerEvent) {
+      const s = state.current
+      if (!s || e.pointerId !== s.id) return
+      const dx = e.screenX - s.x
+      const dy = e.screenY - s.y
+      if (!s.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+      s.moved = true
+      onDragged?.(true)
+      post('PUFF_DRAG_MOVE', { dx, dy })
+    },
+    onPointerUp(e: React.PointerEvent) {
+      const s = state.current
+      if (!s) return
+      try { (e.currentTarget as HTMLElement).releasePointerCapture(s.id) } catch { /* already gone */ }
+      state.current = null
+      post('PUFF_DRAG_END')
+    },
+    onPointerCancel() {
+      if (!state.current) return
+      state.current = null
+      post('PUFF_DRAG_END')
+    },
+  }
 }

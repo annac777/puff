@@ -1,7 +1,7 @@
 // v2
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { inExtension, bridge, captureContext, activityState, chipLabel, formatDuration, workStateFor,
-  consentGranted, setConsent, contentsGranted, restoreTab, isWorkTab, resetActivity, sourceLabel, type Draft } from './puff-bridge'
+  consentGranted, setConsent, contentsGranted, restoreTab, isWorkTab, resetActivity, sourceLabel, useDragHandle, type Draft } from './puff-bridge'
 
 type Screen    = 'proactive' | 'manual' | 'scanning' | 'confirm' | 'on_break' | 'resume'
 type BreakMode = 'agent' | 'save_only' | null
@@ -892,6 +892,8 @@ function PuffLauncher({ screen, workState, agentRunning, onOpen }: {
   screen: Screen; workState: WorkState; agentRunning: boolean; onOpen: () => void
 }) {
   const [cloudHovered, setCloudHovered] = useState(false)
+  const draggedRef = useRef(false)
+  const drag = useDragHandle(v => { draggedRef.current = v })
 
   const floatDur = FLOAT_DUR[workState]
 
@@ -901,12 +903,14 @@ function PuffLauncher({ screen, workState, agentRunning, onOpen }: {
       style={{ paddingTop: '16px' }}
     >
       <button
-        onClick={onOpen}
+        {...drag}
+        // A drag consumes the click it would otherwise produce; anything else opens the panel.
+        onClick={() => { if (draggedRef.current) { draggedRef.current = false; return } onOpen() }}
         aria-label="Open Puff"
         onMouseEnter={() => setCloudHovered(true)}
         onMouseLeave={() => setCloudHovered(false)}
         className="relative w-16 h-16 flex items-end justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7EC8E3] rounded-full transition-transform duration-200"
-        style={{ transform: cloudHovered ? 'scale(1.08)' : 'scale(1)' }}
+        style={{ transform: cloudHovered ? 'scale(1.08)' : 'scale(1)', cursor: inExtension ? 'grab' : 'pointer', touchAction: 'none' }}
       >
         <div className="relative w-14 h-11" style={{ animation: `cloudFloat ${floatDur} ease-in-out infinite` }}>
           <PuffCloud workState={workState} screen={screen} small />
@@ -925,6 +929,7 @@ function PuffLauncher({ screen, workState, agentRunning, onOpen }: {
 function PuffPanel({ screen, onMinimize, children }: {
   screen: Screen; onMinimize: () => void; children: React.ReactNode
 }) {
+  const drag = useDragHandle()
   const label: Partial<Record<Screen, string>> = {
     scanning: 'Reading…', confirm: 'Quick check',
     on_break: 'Away', resume: 'Welcome back',
@@ -936,8 +941,9 @@ function PuffPanel({ screen, onMinimize, children }: {
         maxHeight: inExtension ? 'calc(100vh - 96px)' : 'min(540px, 80vh)',
         animation: 'panelExpand 0.2s ease-out forwards',
       }}>
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#EAE5DF] flex-shrink-0"
-        style={{ background: 'rgba(255,255,255,0.6)', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+      <div {...drag}
+        className="flex items-center justify-between px-4 py-2.5 border-b border-[#EAE5DF] flex-shrink-0 select-none"
+        style={{ background: 'rgba(255,255,255,0.6)', borderTopLeftRadius: 16, borderTopRightRadius: 16, cursor: inExtension ? 'grab' : 'default', touchAction: 'none' }}>
         <div className="flex items-center gap-2">
           <MiniCloud />
           <span className="text-[13px] font-semibold text-[#1A1A1A]">Puff</span>
@@ -958,113 +964,6 @@ function PuffPanel({ screen, onMinimize, children }: {
 }
 
 // ─── Puff Found Panel ─────────────────────────────────────────────────────────
-
-const FOUND_RESULTS = [
-  {
-    type: 'doc' as const,
-    source: 'Figma — Design System Docs',
-    title: 'Help tooltip patterns & placement guidelines',
-    snippet: 'Inline helpers perform better when form fields exceed 4 items. Use expandable for dense layouts where label proximity matters.',
-    tag: 'High relevance',
-    tagColor: 'bg-[#D1FAE5] text-[#065F46]',
-    icon: '📄',
-  },
-  {
-    type: 'doc' as const,
-    source: 'Notion — UX Research Notes',
-    title: 'Q2 Usability findings: Checkout v3',
-    snippet: 'Users missed inline hints 60% of the time on mobile. Contextual tooltips on tap improved task completion by 18%.',
-    tag: 'Relevant',
-    tagColor: 'bg-[#E0F2FE] text-[#0369A1]',
-    icon: '📋',
-  },
-  {
-    type: 'web' as const,
-    source: 'nngroup.com',
-    title: 'Inline vs Progressive Disclosure in Forms',
-    snippet: 'Progressive disclosure reduces cognitive load by 23% in forms with 6+ fields. Inline help is preferable for first-time users.',
-    tag: 'External',
-    tagColor: 'bg-[#F3E8FF] text-[#6B21A8]',
-    icon: '🌐',
-  },
-  {
-    type: 'web' as const,
-    source: 'baymard.com',
-    title: 'Form Field Descriptions: 4 UX Design Patterns',
-    snippet: 'Expandable help icons are frequently overlooked unless paired with persistent visual affordance. Consider always-visible micro-copy.',
-    tag: 'External',
-    tagColor: 'bg-[#F3E8FF] text-[#6B21A8]',
-    icon: '🌐',
-  },
-]
-
-function PuffFoundPanel({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<'all' | 'docs' | 'web'>('all')
-  const results = FOUND_RESULTS.filter(r => tab === 'all' || r.type === tab.replace('docs', 'doc'))
-
-  return (
-    <div className="w-80 bg-[#F7F5F2] rounded-2xl flex flex-col overflow-hidden isolate"
-      style={{ border: '1px solid rgba(255,255,255,0.72)', maxHeight: 'min(540px, 80vh)', animation: 'panelExpand 0.2s ease-out forwards', transformOrigin: 'bottom left' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#EAE5DF] flex-shrink-0"
-        style={{ background: 'rgba(255,255,255,0.6)', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-        <div className="flex items-center gap-2">
-          <span className="text-[14px]">🔍</span>
-          <span className="text-[13px] font-semibold text-[#1A1A1A]">Puff found</span>
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#7EC8E3]/20 text-[#0369A1]">{FOUND_RESULTS.length}</span>
-        </div>
-        <button onClick={onClose} aria-label="Close"
-          className="w-7 h-7 flex items-center justify-center text-[#BEC6D0] hover:text-[#7A8494] rounded-lg hover:bg-[#EDE7E0] transition-colors">
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-            <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* Context pill */}
-      <div className="px-3.5 py-2.5 border-b border-[#EAE5DF] flex-shrink-0" style={{ background: 'rgba(255,255,255,0.4)' }}>
-        <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest mb-1">While you were away, I researched</p>
-        <p className="text-[11.5px] font-medium text-[#374151] leading-snug">"{CTX.summary}"</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 px-3 pt-2.5 pb-1 flex-shrink-0">
-        {(['all', 'docs', 'web'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold transition-all ${tab === t ? 'bg-[#1A1A1A] text-white' : 'text-[#7A8494] hover:text-[#374151] hover:bg-white/60'}`}>
-            {t === 'all' ? 'All' : t === 'docs' ? '📄 Your docs' : '🌐 Web'}
-          </button>
-        ))}
-      </div>
-
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto overscroll-contain px-3 pb-3 space-y-2 pt-1">
-        {results.map((r, i) => (
-          <div key={i} className="bg-white rounded-xl border border-[#E0DAD4] px-3 py-2.5 space-y-1.5 cursor-pointer hover:border-[#7EC8E3]/60 hover:shadow-sm transition-all">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[12px] flex-shrink-0">{r.icon}</span>
-                <p className="text-[9.5px] text-[#7A8494] truncate">{r.source}</p>
-              </div>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${r.tagColor}`}>{r.tag}</span>
-            </div>
-            <p className="text-[12px] font-semibold text-[#1A1A1A] leading-snug">{r.title}</p>
-            <p className="text-[11px] text-[#7A8494] leading-snug">{r.snippet}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="px-3 pb-3 pt-1 flex-shrink-0">
-        <button className="w-full py-2 rounded-xl text-[12px] font-semibold text-[#7A8494] border border-[#E0DAD4] bg-white/60 hover:bg-white hover:text-[#374151] transition-all">
-          Save all findings to doc
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ─── Simulated webpage ────────────────────────────────────────────────────────
 
 function FakeWebpage() {
   return (
