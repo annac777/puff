@@ -87,3 +87,46 @@ test("the last answer is remembered so it can inform the next decision",()=>{
   assert.equal(s.lastAction,"later");
   assert.equal(s.lastActionAt,100000);
 });
+
+// ── Work that happens outside the browser ────────────────────────────────────
+// Puff lives in Chrome, but people write code, documents and designs in desktop apps.
+// chrome.idle reports input across the whole machine, so that work has to count.
+test("a morning in a desktop app still counts as work",()=>{
+  let s={...core.initialState(0),idleState:"active"};
+  // Forty minutes at the machine with no browser input at all.
+  for(let sec=0;sec<40*60;sec++)s=core.evaluate(s,(sec+1)*1000);
+  assert.ok(s.activeSeconds>=39*60,`expected ~40 min of work, got ${Math.round(s.activeSeconds/60)} min`);
+  assert.equal(s.needScore,1,"long enough to be worth offering a break");
+});
+
+test("a system-wide pause is a pause, even with the browser untouched",()=>{
+  let s={...core.initialState(0),idleState:"active"};
+  for(let sec=0;sec<40*60;sec++)s=core.evaluate(s,(sec+1)*1000);
+  const at=40*60*1000;
+  // They step away from the editor: chrome.idle reports the whole machine quiet.
+  s=core.evaluate({...s,idleState:"idle",idleSince:at},at+20000);
+  // Then they come back, and the invitation is waiting rather than missed.
+  s=core.evaluate({...s,idleState:"active",idleSince:null},at+40000);
+  assert.equal(s.mode,"gentle_nudge","a pause outside the browser still opens the door");
+});
+
+test("being away long enough is a real break, not a pause to act on",()=>{
+  let s={...core.initialState(0),idleState:"active"};
+  for(let sec=0;sec<40*60;sec++)s=core.evaluate(s,(sec+1)*1000);
+  const at=40*60*1000;
+  s=core.evaluate({...s,idleState:"idle",idleSince:at},at+5*60000);
+  assert.equal(s.activeSeconds,0,"a real absence resets the estimate");
+  assert.equal(s.pausedAt,0,"and does not leave a stale pause behind");
+});
+
+test("a pause goes stale rather than firing hours later",()=>{
+  let s={...core.initialState(0),idleState:"active"};
+  for(let sec=0;sec<40*60;sec++)s=core.evaluate(s,(sec+1)*1000);
+  const at=40*60*1000;
+  s=core.evaluate({...s,idleState:"idle",idleSince:at},at+20000);
+  s={...core.evaluate({...s,idleState:"active",idleSince:null},at+30000),mode:"quiet",sessionInvited:false};
+  // Five minutes of solid work later, that old pause must not still count.
+  let later=at+30000;
+  for(let sec=0;sec<5*60;sec++){later+=1000;s=core.mergeActivity({...s,lastActivityAt:later},{keypresses:4,lastActivityAt:later},later);}
+  assert.notEqual(s.mode,"gentle_nudge","an expired pause cannot trigger an invitation");
+});
