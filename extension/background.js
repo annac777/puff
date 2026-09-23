@@ -110,7 +110,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   };
   perform().then(sendResponse).catch(error=>sendResponse({ok:false,error:error.message}));return true;
 });
-chrome.tabs.onActivated.addListener(({tabId})=>serialize(async()=>{let state=await getState();if(!state.enabled)return;const tab=await chrome.tabs.get(tabId);state=await tabContext({...state,tabSwitches:state.tabSwitches+1,lastTabChangeAt:Date.now(),lastActivityAt:Date.now()},tab);await saveState(OffRampCore.evaluate(state));}));
+chrome.tabs.onActivated.addListener(({tabId})=>serialize(async()=>{let state=await getState();if(!state.enabled)return;const tab=await chrome.tabs.get(tabId);state=await tabContext(OffRampCore.recordTabSwitch(state),tab);await saveState(OffRampCore.evaluate(state));}));
 chrome.tabs.onUpdated.addListener((id,info,tab)=>{if(tab.active&&(info.title||info.url))serialize(async()=>saveState(await tabContext(await getState(),tab)));});
 chrome.idle.onStateChanged.addListener(idleState=>serialize(async()=>saveState(OffRampCore.evaluate({...await getState(),idleState}))));
 chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==="evaluate-off-ramp")serialize(async()=>{let state=await getState();try{const bridgeState=await bridge("/state");state.designConnected=bridgeState.figmaFresh;state.designLastChangeAt=bridgeState.figmaFresh?bridgeState.context.figma.lastChangeAt:0;}catch{state.designConnected=false;}return saveState(OffRampCore.evaluate(state));});});
