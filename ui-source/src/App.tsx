@@ -1,9 +1,9 @@
 // v2
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { inExtension, bridge, captureContext, activityState, chipLabel, formatDuration, workStateFor,
-  consentGranted, setConsent, contentsGranted, restoreTab, isWorkTab, resetActivity, sourceLabel, useDragHandle, type Draft } from './puff-bridge'
+import { inExtension, activityState, currentPage, saveHold, restoreTab, resetActivity, declineBreak,
+  sourceLabel, pageLabel, formatDuration, formatAway, workStateFor, useDragHandle, type Hold } from './puff-bridge'
 
-type Screen    = 'proactive' | 'manual' | 'scanning' | 'confirm' | 'on_break' | 'resume'
+type Screen    = 'proactive' | 'manual' | 'confirm' | 'on_break' | 'resume'
 type BreakMode = 'agent' | 'save_only' | null
 type WorkState = 'fresh' | 'focused' | 'tired' | 'exhausted' | 'critical'
 
@@ -18,26 +18,10 @@ const WORK_STAGES: { state: WorkState; label: string; time: string }[] = [
 const DEMO_SCREENS: { id: Screen; label: string }[] = [
   { id: 'proactive', label: 'Proactive' },
   { id: 'manual',    label: 'Manual' },
-  { id: 'scanning',  label: 'Scanning' },
   { id: 'confirm',   label: 'Confirm' },
   { id: 'on_break',  label: 'Away' },
   { id: 'resume',    label: 'Resume' },
 ]
-
-const CTX = {
-  summary: 'comparing inline vs. expandable help patterns in the Checkout flow',
-  frames: ['Checkout A', 'Checkout B'],
-  suggestedTask: 'save a brief summary of what you found so far',
-  activeTitle: '',
-}
-// In the extension every one of these is replaced by real agent output before the screen renders.
-export function applyContext(next: { summary: string; frames: string[]; suggestedTask: string; activeTitle?: string }) {
-  CTX.summary = next.summary
-  CTX.frames = next.frames
-  CTX.suggestedTask = next.suggestedTask
-  CTX.activeTitle = next.activeTitle || ''
-}
-
 
 /** Pill colour follows the measured work state, so time and colour can never disagree. */
 const PILL: Record<WorkState, { bg: string; border: string; text: string; dot: string }> = {
@@ -95,7 +79,7 @@ function PuffCloud({
   const shadow = screen === 'resume' ? '#7EC8E3' : SHADOW_COLOR[workState]
 
   const isSleeping = screen === 'on_break'
-  const isScanning = screen === 'scanning'
+  const isScanning = false
   const isResume   = screen === 'resume'
   const isProactive = screen === 'proactive'
 
@@ -618,45 +602,23 @@ function ManualScreen({ workState, workDuration, onHold, onDismiss }: {
   )
 }
 
-function ScanningScreen({ workState }: { workState: WorkState }) {
-  return (
-    <div className="px-4 py-5 flex flex-col items-center gap-5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="relative w-28 h-[88px]" style={{ animation: 'cloudBreathe 1.8s ease-in-out infinite' }}>
-        <PuffCloud workState={workState} screen="scanning" />
-      </div>
-      <div className="text-center space-y-1">
-        <p className="text-[14px] font-semibold text-[#1A1A1A]">Reading your context…</p>
-        <p className="text-[12px] text-[#BEC6D0]">Just a moment</p>
-      </div>
-    </div>
-  )
-}
-
-function ConfirmScreen({ workState, onYes, onNo, onOther }: {
-  workState: WorkState; onYes: () => void; onNo: () => void; onOther: (v: string) => void
+function ConfirmScreen({ workState, page, note, onNote, onConfirm, onBack }: {
+  workState: WorkState
+  page: { label: string; source: string }
+  note: string
+  onNote: (v: string) => void
+  onConfirm: () => void
+  onBack: () => void
 }) {
-  const [otherMode, setOtherMode] = useState(false)
-  const [otherText, setOtherText] = useState('')
-  const textRef = useRef<HTMLTextAreaElement>(null)
-
+  const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (otherMode) return
-      if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); onYes() }
-      else if (e.key === 'n' || e.key === 'N' || e.code === 'Escape') { e.preventDefault(); onNo() }
-      else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
-        setOtherMode(true)
-        setOtherText(e.key)
-        setTimeout(() => textRef.current?.focus(), 30)
-      }
+      if (e.code === 'Escape') { e.preventDefault(); onBack() }
+      if (e.code === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onConfirm() }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [otherMode, onYes, onNo])
-
-  useEffect(() => { if (otherMode) textRef.current?.focus() }, [otherMode])
-
-  const submit = () => { if (otherText.trim()) onOther(otherText.trim()) }
+  }, [onBack, onConfirm])
 
   return (
     <div className="px-4 py-4 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
@@ -665,94 +627,72 @@ function ConfirmScreen({ workState, onYes, onNo, onOther }: {
           <PuffCloud workState={workState} screen="confirm" small />
         </div>
         <p className="text-[13px] font-medium text-[#374151] leading-snug">
-          It seems like you're{' '}
-          <span className="text-[#0369A1] font-semibold">{CTX.summary}</span>.
+          I'll bring you back to{' '}
+          <span className="text-[#0369A1] font-semibold">{page.label}</span>.
         </p>
       </div>
 
-      <div className="flex gap-1.5 flex-wrap items-center">
-        {CTX.frames.map((f, i) => (
-          <span key={f + i}
-            className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
-              i === 0
-                ? 'bg-[#7EC8E3] text-white border-[#7EC8E3]'
-                : 'bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]'
-            }`}>
-            {i === 0 && <span className="opacity-80">on this page</span>}
-            {f}
+      {page.source && (
+        <div className="flex gap-1.5 flex-wrap">
+          <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md border bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]">
+            {page.source}
           </span>
-        ))}
-      </div>
-
-      <div className="bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3">
-        <p className="text-[12.5px] text-[#374151] leading-snug">
-          Do you want me to{' '}
-          <span className="font-semibold text-[#1A1A1A]">{CTX.suggestedTask}</span>?
-        </p>
-      </div>
-
-      {!otherMode ? (
-        <div className="flex flex-col gap-2">
-          <PrimaryBtn onClick={onYes} shortcut="space">Yes, go ahead</PrimaryBtn>
-          <SecondaryBtn onClick={onNo} shortcut="N">No thanks</SecondaryBtn>
-          <div className="flex justify-center pt-0.5">
-            <button onClick={() => setOtherMode(true)}
-              className="text-[11.5px] text-[#BEC6D0] hover:text-[#7A8494] transition-colors">
-              Or tell me what to do instead…
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <textarea ref={textRef} value={otherText} onChange={e => setOtherText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-            rows={3} placeholder="Type what you'd like me to do…"
-            className="w-full resize-none text-[13px] text-[#1A1A1A] bg-[#F7F5F2] border border-[#E0DAD4] focus:border-[#7EC8E3] focus:ring-2 focus:ring-[#7EC8E3]/20 rounded-xl px-3 py-2.5 outline-none transition-all leading-relaxed" />
-          <PrimaryBtn onClick={submit} disabled={!otherText.trim()}>Let's do it ↵</PrimaryBtn>
-          <div className="flex justify-center">
-            <GhostBtn onClick={() => { setOtherMode(false); setOtherText('') }}>Back</GhostBtn>
-          </div>
         </div>
       )}
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="puff-note" className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">
+          Anything to remember? Optional
+        </label>
+        <textarea
+          id="puff-note"
+          ref={ref}
+          value={note}
+          onChange={e => onNote(e.target.value.slice(0, 200))}
+          rows={2}
+          placeholder="Still deciding between the two layouts…"
+          className="w-full resize-none text-[13px] text-[#1A1A1A] bg-[#F7F5F2] border border-[#E0DAD4] focus:border-[#7EC8E3] focus:ring-2 focus:ring-[#7EC8E3]/20 rounded-xl px-3 py-2.5 outline-none transition-all leading-relaxed"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <PrimaryBtn onClick={onConfirm}>Start my break</PrimaryBtn>
+        <div className="flex justify-center">
+          <GhostBtn onClick={onBack}>Back</GhostBtn>
+        </div>
+      </div>
     </div>
   )
 }
 
-function OnBreakScreen({ breakMode, onBack, jobStatus, jobQuestion }: {
-  breakMode: BreakMode; onBack: () => void; jobStatus?: string | null; jobQuestion?: string
+function OnBreakScreen({ hold, awaySeconds, onBack }: {
+  hold: { label: string; note: string } | null
+  awaySeconds: number
+  onBack: () => void
 }) {
-  const [elapsed, setElapsed] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setElapsed(s => s + 1), 1000)
-    return () => clearInterval(t)
-  }, [])
-  const mins = Math.floor(elapsed / 60)
-  const secs = elapsed % 60
-  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
-
   return (
     <div className="px-4 py-5 flex flex-col items-center gap-5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
       <div className="relative w-28 h-[88px]">
         <div className="absolute inset-0 pointer-events-none rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(126,200,227,0.10) 0%, transparent 70%)', animation: 'glowPulse 2.4s ease-in-out infinite' }} />
-        <div className="relative w-full h-full" style={{ animation: 'cloudFloat 3.2s ease-in-out infinite' }}>
+          style={{ background: 'radial-gradient(circle, rgba(126,200,227,0.12) 0%, transparent 70%)', animation: 'glowPulse 2.2s ease-in-out infinite' }} />
+        <div className="relative w-full h-full" style={{ animation: 'cloudFloat 3s ease-in-out infinite' }}>
           <PuffCloud workState="fresh" screen="on_break" />
         </div>
       </div>
+
       <div className="text-center space-y-1">
-        <h2 className="text-[18px] font-semibold text-[#1A1A1A] tracking-tight">Your thought is held.</h2>
-        <p className="text-[12px] text-[#BEC6D0]">Away for {timeStr}</p>
+        <h2 className="text-[18px] font-semibold text-[#1A1A1A] tracking-tight">Your place is held.</h2>
+        <p className="text-[12px] text-[#BEC6D0]">Away for {formatAway(awaySeconds)}</p>
       </div>
-      {breakMode === 'agent' && (
-        <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 flex items-start gap-2.5">
-          <div className="w-2 h-2 mt-0.5 rounded-full bg-[#7EC8E3] flex-shrink-0"
-            style={{ animation: 'glowPulse 0.9s ease-in-out infinite' }} />
-          <div>
-            <p className="text-[11px] font-bold text-[#BEC6D0] uppercase tracking-wide mb-0.5">{jobStatus ? jobStatus : 'Running'}</p>
-            <p className="text-[12.5px] font-medium text-[#374151] leading-snug">{CTX.suggestedTask}</p>
-          </div>
+
+      {hold && (
+        <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 space-y-1">
+          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">Waiting for you</p>
+          <p className="text-[12.5px] font-medium text-[#374151] leading-snug">{hold.label}</p>
+          {hold.note && <p className="text-[12px] text-[#7A8494] leading-snug italic">"{hold.note}"</p>}
         </div>
       )}
+
       <button onClick={onBack}
         className="text-[12px] font-medium text-[#BEC6D0] hover:text-[#7EC8E3] transition-colors">
         I'm back →
@@ -761,65 +701,11 @@ function OnBreakScreen({ breakMode, onBack, jobStatus, jobQuestion }: {
   )
 }
 
-
-/** Minimal Markdown rendering for the agent's brief: headings, bullets, bold, and links. */
-function renderInline(text: string, keyBase: string): React.ReactNode[] {
-  const out: React.ReactNode[] = []
-  const re = /\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g
-  let last = 0, m: RegExpExecArray | null, i = 0
-  while ((m = re.exec(text))) {
-    if (m.index > last) out.push(text.slice(last, m.index))
-    if (m[1]) out.push(<strong key={`${keyBase}-b${i}`} className="font-semibold">{m[1]}</strong>)
-    else out.push(
-      <a key={`${keyBase}-a${i}`} href={m[3]} target="_blank" rel="noopener noreferrer" className="underline break-all">{m[2]}</a>,
-    )
-    last = m.index + m[0].length
-    i++
-  }
-  if (last < text.length) out.push(text.slice(last))
-  return out
-}
-
-function renderBrief(md: string): React.ReactNode {
-  const lines = md.split('\n')
-  const blocks: React.ReactNode[] = []
-  let bullets: string[] = []
-  const flush = () => {
-    if (!bullets.length) return
-    blocks.push(
-      <ul key={`ul-${blocks.length}`} className="list-disc pl-4 space-y-1 my-1">
-        {bullets.map((b, i) => <li key={i}>{renderInline(b, `li${blocks.length}-${i}`)}</li>)}
-      </ul>,
-    )
-    bullets = []
-  }
-  lines.forEach((raw, idx) => {
-    const line = raw.trim()
-    if (!line) { flush(); return }
-    if (/^#{1,6}\s/.test(line)) {
-      flush()
-      blocks.push(
-        <p key={`h${idx}`} className="text-[10px] font-bold uppercase tracking-widest mt-2 mb-1 opacity-70">
-          {line.replace(/^#{1,6}\s*/, '')}
-        </p>,
-      )
-      return
-    }
-    const bullet = line.match(/^(?:[-*\u2013]|\d+\.)\s+(.*)$/)
-    if (bullet) { bullets.push(bullet[1]); return }
-    flush()
-    blocks.push(<p key={`p${idx}`} className="my-1">{renderInline(line, `p${idx}`)}</p>)
-  })
-  flush()
-  return <>{blocks}</>
-}
-
-function ResumeScreen({ breakMode, customTask, onDone, jobStatus, jobResult }: {
-  breakMode: BreakMode; customTask: string; onDone: () => void
-  jobStatus?: string | null
-  jobResult?: { summary: string; sources: { title: string; url: string }[] } | null
+function ResumeScreen({ hold, awaySeconds, onDone }: {
+  hold: { label: string; source: string; note: string } | null
+  awaySeconds: number
+  onDone: () => void
 }) {
-  const [showSources, setShowSources] = useState(false)
   return (
     <div className="px-4 py-5 flex flex-col items-center gap-5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
       <div className="relative w-20 h-[64px]" style={{ animation: 'cloudFloat 2.4s ease-in-out infinite' }}>
@@ -827,66 +713,43 @@ function ResumeScreen({ breakMode, customTask, onDone, jobStatus, jobResult }: {
           style={{ background: 'radial-gradient(ellipse 80px 60px at 58% 40%, rgba(253,230,138,0.3) 0%, transparent 70%)' }} />
         <PuffCloud workState="fresh" screen="resume" />
       </div>
+
       <div className="text-center space-y-1">
         <h2 className="text-[22px] font-semibold text-[#1A1A1A] tracking-tight">Welcome back ✦</h2>
-        <p className="text-[12.5px] text-[#7A8494]">Here's where you left off.</p>
+        <p className="text-[12.5px] text-[#7A8494]">You were away for {formatAway(awaySeconds)}.</p>
       </div>
-      <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 space-y-1.5">
-        <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were working on</p>
-        <p className="text-[13.5px] font-semibold text-[#1A1A1A] leading-snug">{CTX.activeTitle || CTX.summary}</p>
-        {CTX.activeTitle && <p className="text-[11.5px] text-[#7A8494] leading-snug">{CTX.summary}</p>}
-        <div className="flex gap-1.5 flex-wrap pt-0.5">
-          {CTX.frames.map(f => (
-            <span key={f} className="inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-md border bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]">{f}</span>
-          ))}
-        </div>
-      </div>
-      {breakMode === 'agent' && jobStatus === 'completed' && jobResult && (
-        <div className="w-full bg-[#F0FDF4] rounded-xl border border-[#BBF7D0] px-3.5 py-3 space-y-1">
-          <p className="text-[9.5px] font-bold text-[#166534] uppercase tracking-widest">Puff found</p>
-          <div className="text-[12px] text-[#166534] leading-relaxed max-h-52 overflow-y-auto pr-1">{renderBrief(jobResult.summary)}</div>
-          {jobResult.sources.length > 0 && (
-            <>
-              <button onClick={() => setShowSources(v => !v)} className="text-[11px] text-[#059669] font-semibold hover:underline">
-                {showSources ? 'Hide sources' : `See ${jobResult.sources.length} sources ↗`}
-              </button>
-              {showSources && (
-                <ul className="list-disc pl-4 space-y-1 pt-1">
-                  {jobResult.sources.map(src => (
-                    <li key={src.url} className="text-[11px] leading-snug">
-                      <a href={src.url} target="_blank" rel="noopener noreferrer" className="text-[#059669] underline break-all">{src.title}</a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
+
+      {hold ? (
+        <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 space-y-1.5">
+          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were on</p>
+          <p className="text-[13.5px] font-semibold text-[#1A1A1A] leading-snug">{hold.label}</p>
+          {hold.source && (
+            <div className="flex gap-1.5 flex-wrap pt-0.5">
+              <span className="inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-md border bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]">
+                {hold.source}
+              </span>
+            </div>
+          )}
+          {hold.note && (
+            <p className="text-[12.5px] text-[#854D0E] leading-snug bg-[#FFFBEB] border border-[#FDE68A]/60 rounded-lg px-2.5 py-2 mt-1">
+              "{hold.note}"
+            </p>
           )}
         </div>
-      )}
-      {breakMode === 'agent' && jobStatus && jobStatus !== 'completed' && (
-        <div className="w-full bg-[#FFFBEB] rounded-xl border border-[#FDE68A]/60 px-3.5 py-3">
-          <p className="text-[9.5px] font-bold text-[#854D0E] uppercase tracking-widest mb-1">Task {jobStatus}</p>
-          <p className="text-[12px] text-[#854D0E] leading-snug">
-            {jobStatus === 'running'
-              ? 'Still working. Coming back early did not stop it, and no result is being shown yet.'
-              : 'No result was produced, and nothing was invented in its place. Your place is still saved.'}
+      ) : (
+        <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3">
+          <p className="text-[12.5px] text-[#7A8494] leading-snug">
+            Nothing was saved for this break, so there's no page to return to.
           </p>
         </div>
       )}
-      {breakMode === 'save_only' && customTask && (
-        <div className="w-full bg-[#FFFBEB] rounded-xl border border-[#FDE68A]/60 px-3.5 py-3">
-          <p className="text-[9.5px] font-bold text-[#854D0E] uppercase tracking-widest mb-1">Your note</p>
-          <p className="text-[12.5px] text-[#854D0E] leading-snug">"{customTask}"</p>
-        </div>
-      )}
+
       <div className="w-full">
-        <PrimaryBtn onClick={onDone}>Return to my work</PrimaryBtn>
+        <PrimaryBtn onClick={onDone}>{hold ? 'Return to my work' : 'Back to work'}</PrimaryBtn>
       </div>
     </div>
   )
 }
-
-// ─── Launcher ─────────────────────────────────────────────────────────────────
 
 function PuffLauncher({ screen, workState, agentRunning, onOpen }: {
   screen: Screen; workState: WorkState; agentRunning: boolean; onOpen: () => void
@@ -931,8 +794,7 @@ function PuffPanel({ screen, onMinimize, children }: {
 }) {
   const drag = useDragHandle()
   const label: Partial<Record<Screen, string>> = {
-    scanning: 'Reading…', confirm: 'Quick check',
-    on_break: 'Away', resume: 'Welcome back',
+    confirm: 'Hold your place', on_break: 'Away', resume: 'Welcome back',
   }
   return (
     <div className="w-80 bg-[#F7F5F2] rounded-2xl flex flex-col overflow-hidden isolate"
@@ -1072,17 +934,15 @@ export default function App() {
     try { window.parent.postMessage({ type: 'PUFF_FRAME', expanded: isExpanded }, '*') } catch { /* no host */ }
   }, [isExpanded])
 
-  // ── Real backend state ────────────────────────────────────────────────────
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [checkpointId, setCheckpointId] = useState<string | null>(null)
-  const [jobStatus, setJobStatus] = useState<string | null>(null)
-  const [jobResult, setJobResult] = useState<{ summary: string; sources: { title: string; url: string }[] } | null>(null)
-  const [jobQuestion, setJobQuestion] = useState('')
+  // ── Local state. Nothing here leaves the browser. ──────────────────────────
+  const [hold, setHold] = useState<Hold | null>(null)
+  const [page, setPage] = useState<{ title: string; url: string } | null>(null)
+  const [note, setNote] = useState('')
+  const [awaySeconds, setAwaySeconds] = useState(0)
   const [error, setError] = useState('')
   const [workSeconds, setWorkSeconds] = useState(0)
-  const [, forceRender] = useState(0)
 
-  // Measured activity drives the mood and the "Working for …" pill.
+  // Measured activity drives the mood, the "Working for …" pill, and the nudge.
   useEffect(() => {
     if (!inExtension) return
     let alive = true
@@ -1091,134 +951,49 @@ export default function App() {
       if (!alive || !s) return
       setWorkSeconds(s.sessionSeconds || 0)
       setWorkState(workStateFor(s.sessionSeconds || 0))
-      if (s.mode === 'gentle_nudge' && !draft && screen !== 'on_break' && screen !== 'resume') {
+      if (s.mode === 'gentle_nudge' && screen !== 'on_break' && screen !== 'resume' && screen !== 'confirm') {
         setScreen('proactive'); setIsExpanded(true)
       }
     }
     tick()
     const id = setInterval(tick, 5000)
     return () => { alive = false; clearInterval(id) }
-  }, [draft, screen])
+  }, [screen])
 
-  const startScan = useCallback(async () => {
-    if (!inExtension) { goTo('scanning'); setTimeout(() => setScreen('confirm'), 1600); return }
-    setError('')
-    goTo('scanning')
-    try {
-      await captureContext(contentsGranted())
-      setConsent(true)
-      const record: Draft = await bridge('/draft', { consent: true, intent: '' })
-      const tabs = record.context.browser?.tabs || []
-      const active = tabs.find(t => t.active)
-      // Chips name where the work lives. The first is the page you are on.
-      const activeUrl = active?.url || record.context.browser?.url || ''
-      const activeLabel = sourceLabel(activeUrl) || chipLabel(active?.title || '')
-      const seen = new Set([activeLabel])
-      const others: string[] = []
-      for (const t of tabs) {
-        if (t.active || !isWorkTab(t.url)) continue
-        const label = sourceLabel(t.url)
-        if (!label || seen.has(label)) continue
-        seen.add(label)
-        others.push(label)
-        if (others.length === 2) break
-      }
-      applyContext({
-        summary: record.draft.interpretation,
-        frames: [activeLabel, ...others].filter(Boolean),
-        suggestedTask: record.draft.proposedTask.label,
-        activeTitle: chipLabel(active?.title || record.context.browser?.title || ''),
-      })
-      setDraft(record)
-      forceRender(n => n + 1)
-      setScreen('confirm')
-    } catch (e: any) {
-      setError(e?.message || 'Puff could not read your context. Nothing was made up.')
-      setScreen('manual')
-    }
+  // How long they have actually been away, counted from when the hold was saved.
+  useEffect(() => {
+    if (screen !== 'on_break' || !hold) return
+    const tick = () => setAwaySeconds(Math.floor((Date.now() - hold.savedAt) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [screen, hold])
+
+  const startHold = useCallback(async () => {
+    setError(''); setNote('')
+    setPage(await currentPage())
+    goTo('confirm')
   }, [goTo])
 
-  // Saving a place and delegating work stay separate authorisations.
-  const saveCheckpoint = useCallback(async (record: Draft) => {
-    if (checkpointId) return checkpointId
-    const c = await bridge('/checkpoint', { draftId: record.id, nextStep: record.draft.nextStep })
-    setCheckpointId(c.id)
-    return c.id as string
-  }, [checkpointId])
-
-  const handleYes = useCallback(async () => {
-    if (!inExtension || !draft) { setBreakMode('agent'); goTo('on_break'); return }
+  const confirmHold = useCallback(async () => {
     setError('')
-    try {
-      const id = await saveCheckpoint(draft)
-      const question = draft.draft.proposedTask.question
-      setJobQuestion(question)
-      const job = await bridge('/jobs', { checkpointId: id, question, consent: true })
-      setJobStatus(job.status)
-      setBreakMode('agent')
-      goTo('on_break')
-    } catch (e: any) {
-      // Honest split: the place may be saved even when the task fails to start.
-      setError(e?.message || 'Your place is saved. The task did not start.')
-      setBreakMode('save_only')
-      goTo('on_break')
-    }
-  }, [draft, goTo, saveCheckpoint])
-
-  const handleNo = useCallback(async () => {
-    if (!inExtension || !draft) { setBreakMode('save_only'); goTo('on_break'); return }
-    setError('')
-    try { await saveCheckpoint(draft) } catch (e: any) { setError(e?.message || 'Could not save your place.') }
+    if (!inExtension) { setBreakMode('save_only'); goTo('on_break'); return }
+    const saved = await saveHold(note)
+    if (!saved) { setError('Puff could not save this page. Try again from a normal tab.'); return }
+    setHold(saved)
     setBreakMode('save_only')
     goTo('on_break')
-  }, [draft, goTo, saveCheckpoint])
+  }, [goTo, note])
 
-  const handleOther = useCallback(async (v: string) => {
-    setCustomTask(v)
-    if (!inExtension || !draft) { setBreakMode('save_only'); goTo('on_break'); return }
-    setError('')
-    try {
-      const id = await saveCheckpoint(draft)
-      setJobQuestion(v)
-      const job = await bridge('/jobs', { checkpointId: id, question: v, consent: true })
-      setJobStatus(job.status)
-      setBreakMode('agent')
-    } catch (e: any) {
-      setError(e?.message || 'Your place is saved. The task did not start.')
-      setBreakMode('save_only')
-    }
-    goTo('on_break')
-  }, [draft, goTo, saveCheckpoint])
-
-  // Poll the job so "away" and "resume" never claim more than actually happened.
-  useEffect(() => {
-    if (!inExtension || !checkpointId || breakMode !== 'agent') return
-    let alive = true
-    const poll = async () => {
-      try {
-        const st = await bridge('/state')
-        const job: any = Object.values(st.jobs || {})
-          .filter((j: any) => j.checkpointId === checkpointId)
-          .sort((a: any, b: any) => b.createdAt - a.createdAt)[0]
-        if (!alive || !job) return
-        setJobStatus(job.status)
-        if (job.result) setJobResult(job.result)
-      } catch { /* the away screen keeps its last honest status */ }
-    }
-    poll()
-    const id = setInterval(poll, 4000)
-    return () => { alive = false; clearInterval(id) }
-  }, [checkpointId, breakMode])
+  const declineHold = useCallback(async () => {
+    setIsExpanded(false)
+    await declineBreak('later')
+  }, [])
 
   const handleDone = useCallback(async () => {
-    // "Return to my work" must actually restore the saved location, not just close the panel.
-    if (inExtension && checkpointId) {
-      try {
-        const result = await bridge('/restore', { checkpointId })
-        await restoreTab(draft?.context.browser || null, result?.browser?.url)
-      } catch (e: any) {
-        setError(e?.message || 'Could not reopen your saved page.')
-      }
+    // "Return to my work" must actually reopen the saved page, not just close the panel.
+    if (inExtension && hold) {
+      try { await restoreTab(hold) } catch (e: any) { setError(e?.message || 'Could not reopen your saved page.') }
     }
     await resetActivity()
     setWorkSeconds(0)
@@ -1226,23 +1001,28 @@ export default function App() {
     setIsExpanded(false)
     setScreen(inExtension ? 'manual' : 'proactive')
     setBreakMode(null)
-    setCustomTask('')
-    setDraft(null)
-    setCheckpointId(null)
-    setJobStatus(null)
-    setJobResult(null)
-  }, [checkpointId, draft])
+    setHold(null)
+    setNote('')
+    setAwaySeconds(0)
+  }, [hold])
+
+  // What the saved page is called, for every screen that has to name it.
+  const heldPage = hold
+    ? { label: pageLabel(hold.title), source: sourceLabel(hold.url), note: hold.note === hold.title ? '' : hold.note }
+    : null
+  const confirmPage = page
+    ? { label: pageLabel(page.title), source: sourceLabel(page.url) }
+    : { label: heldPage?.label || 'this page', source: heldPage?.source || '' }
 
   function renderScreen(): React.ReactNode {
-    if (onboarding) return <OnboardingScreen onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {} ; setConsent(true); setOnboarding(false) }} />
+    if (onboarding) return <OnboardingScreen onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {}; setOnboarding(false) }} />
 
     switch (screen) {
-      case 'proactive': return <ProactiveScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onTakeBreak={startScan} onDismiss={() => setIsExpanded(false)} />
-      case 'manual':    return <ManualScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onHold={startScan} onDismiss={() => setIsExpanded(false)} />
-      case 'scanning':  return <ScanningScreen workState={workState} />
-      case 'confirm':   return <ConfirmScreen workState={workState} onYes={handleYes} onNo={handleNo} onOther={handleOther} />
-      case 'on_break':  return <OnBreakScreen breakMode={breakMode} onBack={() => goTo('resume')} jobStatus={jobStatus} jobQuestion={jobQuestion} />
-      case 'resume':    return <ResumeScreen breakMode={breakMode} customTask={customTask} onDone={handleDone} jobStatus={jobStatus} jobResult={jobResult} />
+      case 'proactive': return <ProactiveScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onTakeBreak={startHold} onDismiss={declineHold} />
+      case 'manual':    return <ManualScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onHold={startHold} onDismiss={declineHold} />
+      case 'confirm':   return <ConfirmScreen workState={workState} page={confirmPage} note={note} onNote={setNote} onConfirm={confirmHold} onBack={() => goTo(screen === 'confirm' ? 'manual' : screen)} />
+      case 'on_break':  return <OnBreakScreen hold={heldPage} awaySeconds={awaySeconds} onBack={() => goTo('resume')} />
+      case 'resume':    return <ResumeScreen hold={heldPage} awaySeconds={awaySeconds} onDone={handleDone} />
     }
   }
 

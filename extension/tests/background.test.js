@@ -1,16 +1,34 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const vm=require('node:vm');const core=require('../core.js');
 function worker(initial){
-  const storage={offRampState:initial,bridgeToken:'a'.repeat(64)},listeners={},updated=[],sent=[];
+  const storage={offRampState:initial},listeners={},updated=[],sent=[];
   const event=name=>({addListener:fn=>listeners[name]=fn});
   const active={id:7,windowId:1,url:'https://example.org/work',title:'Work'};
   const chrome={storage:{local:{get:async key=>({[key]:storage[key]}),set:async value=>Object.assign(storage,value)}},runtime:{getURL:p=>'chrome-extension://fixture/'+p,onInstalled:event('installed'),onStartup:event('startup'),onMessage:event('message')},tabs:{query:async()=>[active],get:async()=>active,sendMessage:async(...args)=>sent.push(args),update:async(...args)=>updated.push(args),create:async tab=>updated.push(tab),onActivated:event('activated'),onUpdated:event('updated')},windows:{update:async()=>{}},idle:{onStateChanged:event('idle'),setDetectionInterval(){},queryState:async()=>'active'},alarms:{onAlarm:event('alarm'),create:async()=>{}}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../background.js'),'utf8'),{chrome,importScripts(){},OffRampCore:core,URL,Date,Promise,AbortSignal});
   return {storage,updated,sent,send:(message,sender={url:'chrome-extension://fixture/panel.html'})=>new Promise(resolve=>listeners.message(message,sender,resolve))};
 }
-test('MV3 bridge keeps tokens private and rejects webpage requests',async()=>{
-  const w=worker(core.initialState());const result=await w.send({type:'GET_STATE'});
-  assert.equal(JSON.stringify(result).includes('a'.repeat(64)),false);
-  assert.equal((await w.send({type:'BRIDGE',route:'/state'},{url:'https://example.org/'})).ok,false);
+test('holding a place saves the current tab and only from the panel',async()=>{
+  const w=worker(core.initialState());
+  const sender={url:'chrome-extension://fixture/app/index.html',tab:{id:7,url:'https://example.org/work',title:'Work'}};
+  const held=await w.send({type:'SAVE_HOLD',note:'Still deciding'},sender);
+  assert.equal(held.ok,true);
+  assert.equal(held.hold.url,'https://example.org/work');
+  assert.equal(held.hold.note,'Still deciding');
+  assert.equal(held.hold.tabId,7);
+  // A web page must never be able to ask Puff to record where someone is.
+  assert.equal((await w.send({type:'SAVE_HOLD',note:'x'},{url:'https://evil.example/',tab:{id:7,url:'https://evil.example/'}})).ok,false);
+});
+
+test('a hold without a note still names the page it came from',async()=>{
+  const w=worker(core.initialState());
+  const sender={url:'chrome-extension://fixture/app/index.html',tab:{id:7,url:'https://example.org/work',title:'Work'}};
+  const held=await w.send({type:'SAVE_HOLD',note:'   '},sender);
+  assert.equal(held.hold.note,'Work');
+});
+
+test('nothing in the extension reaches for a server any more',()=>{
+  const source=fs.readFileSync(path.join(__dirname,'../background.js'),'utf8');
+  assert.doesNotMatch(source,/127\.0\.0\.1|localhost|bridgeToken|\/draft|\/jobs/,'background must be fully local');
 });
 test('MV3 preserves old checkpoints and ignores disabled or background activity',async()=>{
   const old={title:'Saved work',url:'https://example.org/work',note:'Keep me'};const w=worker({version:1,checkpoint:old,enabled:false});
