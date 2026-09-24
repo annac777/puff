@@ -1,4 +1,8 @@
-# Puff — interview guide
+# Puff — interview notes
+
+> **Use Hyeji's shared interview guide** (in the Puff Google Doc) for the core questions, so
+> all five interviews can be synthesised together. These are supplementary notes on technique
+> for Anna's two sessions, not a replacement.
 
 **Format.** 45 minutes, semi-structured, one participant at a time.
 **Sample.** 5 total — Hyeji runs 3, Anna runs 2.
@@ -108,7 +112,7 @@ Only now:
 > *"A small cloud in the corner of your browser. It notices when you've been working a long
 > stretch, waits until your hands actually stop rather than interrupting you mid-sentence, and
 > then offers to save where you are so you can step away. When you come back, it takes you back
-> to the page and reminds you what you were about to do."*
+> to the page, along with a note to yourself if you left one."*
 
 > "What's your first reaction?"
 > "Where would that not work for you?"

@@ -164,14 +164,15 @@ never used one, just write N/A)*
 > *A small cloud that lives in the corner of your browser. It notices when you've been working a
 > long stretch, waits until your hands actually stop rather than interrupting mid-sentence, and
 > then offers to save where you are so you can step away. When you come back, it takes you back
-> to the page and reminds you what you were about to do.*
+> to the page, along with a note to yourself if you left one.*
 
 How likely would you be to install it? *(5-point: Very unlikely → Very likely)*
 
 **F2.** What's your first reaction, and what would put you off? *(open text)*
 
-**F3.** To do this, it counts how often you click, type and scroll in your browser. It does not
-record what you type, the contents of pages, or anything outside the browser. How comfortable
+**F3.** To do this, it counts how often you click, type and scroll in your browser. It also
+notices when your computer goes idle. It never records what you type, what's on a page, or
+which apps you use. How comfortable
 are you with that? *(5-point: Very uncomfortable → Very comfortable)*
 
 > Privacy is the main barrier to installing any extension. Measuring it here is cheaper than

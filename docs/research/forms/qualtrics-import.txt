@@ -141,7 +141,7 @@ How much do you agree? "If I knew I could easily pick up where I left off, I'd b
 [[Block:F - The concept]]
 
 [[Question:DB]]
-Here is something we're building:<br><br><em>A small cloud that lives in the corner of your browser. It notices when you've been working a long stretch, waits until your hands actually stop rather than interrupting mid-sentence, and then offers to save where you are so you can step away. When you come back, it takes you back to the page and reminds you what you were about to do.</em>
+Here is something we're building:<br><br><em>A small cloud that lives in the corner of your browser. It notices when you've been working a long stretch, waits until your hands actually stop rather than interrupting mid-sentence, and then offers to save where you are so you can step away. When you come back, it takes you back to the page, along with a note to yourself if you left one.</em>
 
 [[Question:MC:SingleAnswer:Horizontal]]
 [[ID:F1]]
@@ -159,7 +159,7 @@ What's your first reaction, and what would put you off?
 
 [[Question:MC:SingleAnswer:Horizontal]]
 [[ID:F3]]
-To do this, it counts how often you click, type and scroll in your browser. It does not record what you type, the contents of pages, or anything outside the browser. How comfortable are you with that?
+To do this, it counts how often you click, type and scroll in your browser. It also notices when your computer goes idle. It never records what you type, what's on a page, or which apps you use. How comfortable are you with that?
 [[Choices]]
 1 — Very uncomfortable
 2
