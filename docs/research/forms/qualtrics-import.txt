@@ -1,0 +1,190 @@
+[[AdvancedFormat]]
+
+[[Block:Intro]]
+
+[[Question:DB]]
+This survey is about how you work and what happens when you stop. It takes about 5 minutes.<br><br>There are no right answers, and we are not testing you. Please answer for what you actually did, not what you feel you should have done.<br><br>Your answers are anonymous. We ask for an email at the very end only if you want to hear about the next stage — it is optional and stored separately from your answers.
+
+[[PageBreak]]
+
+[[Block:A - Where the work happens]]
+
+[[Question:MC:SingleAnswer:Vertical]]
+[[ID:A1]]
+Think about the last time you worked on one thing for an hour or more without really stopping. During that stretch, what were you mostly working in?
+[[Choices]]
+Mostly in a web browser (Google Docs, Figma in the browser, webmail, reading and research)
+Mostly in a desktop app (VS Code, Word, the Figma desktop app, Photoshop, Excel)
+Roughly an even split between the two
+Mostly not on a computer
+
+[[Question:MC:SingleAnswer:Vertical]]
+[[ID:A2]]
+Thinking about last week overall, roughly what share of your focused work happened in a web browser?
+[[Choices]]
+0–20%
+21–40%
+41–60%
+61–80%
+81–100%
+
+[[Question:TE:SingleLine]]
+[[ID:A3]]
+Which three tools do you spend the most focused time in? Just list them, separated by commas.
+
+[[PageBreak]]
+
+[[Block:B - What actually happened]]
+
+[[Question:MC:SingleAnswer:Vertical]]
+[[ID:B1]]
+In the past 7 days, how many times did you work for more than 2 hours without a real break? Checking your phone at your desk does not count.
+[[Choices]]
+0
+1–2
+3–5
+6 or more
+I don't remember
+
+[[Question:MC:MultipleAnswer:Vertical]]
+[[ID:B2]]
+Think about the most recent time you worked longer than you meant to. Why did you keep going? Select all that apply.
+[[Choices]]
+I lost track of time
+I noticed, but I didn't want to stop in the middle of something
+I was worried I wouldn't get back into it if I stopped
+A deadline
+I was waiting on something to finish (a build, a render, a reply)
+I did rest, I just didn't leave the screen
+Something else
+
+[[Question:MC:SingleAnswer:Vertical]]
+[[ID:B3]]
+Think about the last time you were interrupted or had to step away mid-task. How long did it take to get back into it?
+[[Choices]]
+Right away
+1–5 minutes
+5–15 minutes
+More than 15 minutes
+I never really got back into it that day
+
+[[Question:MC:MultipleAnswer:Vertical]]
+[[ID:B4]]
+When you came back that time, which of these actually happened? Select all that apply.
+[[Choices]]
+I forgot what my next step was
+I lost a thought or question I'd had
+I had to hunt for the page or file I'd been in
+I had to re-read things to work out where I was
+None of these — I picked it straight back up
+
+[[PageBreak]]
+
+[[Block:C - Timing]]
+
+[[Question:Matrix]]
+[[ID:C1]]
+If a reminder to take a break appeared at each of these moments, how disruptive would it feel?
+[[Choices]]
+While I was in the middle of typing
+Just after I finished reading something, before deciding what to do next
+Just after I saved or submitted something
+Just after I switched to a different tab or window
+Please select "Not at all disruptive" for this row
+At a completely random moment
+[[Answers]]
+Not at all disruptive
+Slightly disruptive
+Moderately disruptive
+Very disruptive
+Extremely disruptive
+
+[[PageBreak]]
+
+[[Block:D - What you already use]]
+
+[[Question:MC:MultipleAnswer:Vertical]]
+[[ID:D1]]
+Do you use anything to remind yourself to take breaks? Select all that apply.
+[[Choices]]
+No, nothing
+A timer on my phone or computer
+A Pomodoro app
+A watch or fitness tracker's stand-up reminder
+A browser extension
+Calendar blocks
+Someone else tells me
+Something else
+
+[[Question:TE:Essay]]
+[[ID:D2]]
+Have you ever stopped using one of them? What made you stop? If you've never used one, just write N/A.
+
+[[PageBreak]]
+
+[[Block:E - Core hypothesis]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:E1]]
+How much do you agree? "If I knew I could easily pick up where I left off, I'd be more willing to stop for a break."
+[[Choices]]
+1 — Strongly disagree
+2
+3
+4
+5
+6
+7 — Strongly agree
+
+[[PageBreak]]
+
+[[Block:F - The concept]]
+
+[[Question:DB]]
+Here is something we're building:<br><br><em>A small cloud that lives in the corner of your browser. It notices when you've been working a long stretch, waits until your hands actually stop rather than interrupting mid-sentence, and then offers to save where you are so you can step away. When you come back, it takes you back to the page and reminds you what you were about to do.</em>
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:F1]]
+How likely would you be to install it?
+[[Choices]]
+1 — Very unlikely
+2
+3
+4
+5 — Very likely
+
+[[Question:TE:Essay]]
+[[ID:F2]]
+What's your first reaction, and what would put you off?
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:F3]]
+To do this, it counts how often you click, type and scroll in your browser. It does not record what you type, the contents of pages, or anything outside the browser. How comfortable are you with that?
+[[Choices]]
+1 — Very uncomfortable
+2
+3
+4
+5 — Very comfortable
+
+[[PageBreak]]
+
+[[Block:G - Recruiting]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:G1]]
+Would you be willing to talk to us for 30 minutes about how you work?
+[[Choices]]
+Yes
+No
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:G2]]
+Would you be willing to try it for two weeks and let us collect anonymous usage data?
+[[Choices]]
+Yes
+No
+
+[[Question:TE:SingleLine]]
+[[ID:G3]]
+If you said yes to either, what email should we use? Optional, stored separately from your answers, and used for nothing else.

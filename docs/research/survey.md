@@ -27,6 +27,7 @@ has to change. Part A is therefore the most consequential section, not the warm-
 | Form tool | Qualtrics if NYU's licence covers it, otherwise Google Forms |
 | Panel | Prolific or CloudResearch Connect |
 | Attention check | One embedded row in C1 — exclude failures before analysis |
+| Branching | None. Every question shows for everyone, so the survey imports in one pass. |
 | Identifiers | None, except the email volunteered in G2 (stored separately from responses) |
 
 **Screening happens on the panel, not in the survey.** Paying people to be screened out is
@@ -46,7 +47,13 @@ stopping. During that stretch, what were you mostly working in? *(single choice)
 - Mostly not on a computer
 
 **A2.** Thinking about last week overall, roughly what share of your focused work happened in a
-web browser? *(slider, 0–100%)*
+web browser? *(single choice)*
+
+- 0–20% · 21–40% · 41–60% · 61–80% · 81–100%
+
+> Banded rather than a slider. Qualtrics cannot import a slider, and a slider implies a
+> precision nobody has about last week anyway. The bands are cut so the 40% decision threshold
+> below falls on a boundary.
 
 **A3.** Which three tools do you spend the most focused time in? *(open text, one line)*
 
@@ -128,8 +135,8 @@ feel? *(matrix, 5-point: Not at all disruptive → Extremely disruptive)*
 - Someone else tells me
 - Something else
 
-**D2.** *(shown only if D1 ≠ "No, nothing")* Have you ever stopped using one of them? What made
-you stop? *(open text)*
+**D2.** Have you ever stopped using one of them? What made you stop? *(open text — if you've
+never used one, just write N/A)*
 
 > The most valuable question in the survey. Why timers fail needs to come from people who
 > abandoned one, in their words — not from our inference about arm A.
@@ -188,8 +195,9 @@ Decide these before the data arrives, so the data cannot talk us into a conclusi
 **Exclusions.** Failed attention check (C1 row 5). Completion time under 90 seconds. A3 left
 blank or filled with nonsense.
 
-**Go/no-go on positioning.** If the median A2 is below 40%, "remembers your place" serves a
-minority and the product leads with the break invitation instead.
+**Go/no-go on positioning.** If fewer than half of respondents pick 41–60% or higher on A2,
+"remembers your place" serves a minority and the product leads with the break invitation
+instead.
 
 **Does the problem exist.** The share reporting B1 ≥ 3 *and* at least one item in B4.
 
