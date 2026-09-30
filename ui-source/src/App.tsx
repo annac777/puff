@@ -101,6 +101,19 @@ function Sticker({ bg, tape = 'rgba(249,201,214,.85)', tilt = 0, className = '',
   )
 }
 
+/** Mute reminders: a round button with the power symbol (Heroicons "power", outline). The label
+ *  lives in aria-label and the tooltip, since the icon alone carries it visually. */
+function MuteButton({ onClick, size = 36 }: { onClick: () => void; size?: number }) {
+  return (
+    <button onClick={onClick} aria-label="mute reminders" title="mute reminders"
+      className="puff-btn bg-[#E3DCF5] rounded-full flex items-center justify-center flex-shrink-0" style={{ width: size, height: size, borderRadius: 999 }}>
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" />
+      </svg>
+    </button>
+  )
+}
+
 /** Back sits top-left as a real button, where people look for it. */
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
@@ -318,7 +331,7 @@ function ProactiveScreen({ workSeconds, why, onTakeBreak, onLater, onPause }: {
       <div className="flex gap-2 justify-center mt-3 pb-0.5">
         <button onClick={onTakeBreak} className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
         <button onClick={onLater} className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
-        <button onClick={onPause} className="puff-btn puff-mono bg-[#E3DCF5] text-[12px] px-3.5 h-8">MUTE</button>
+        <MuteButton onClick={onPause} size={32} />
       </div>
     </div>
   )
@@ -479,7 +492,7 @@ function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, control
           carrying on without reminders. The labels say which. */}
       <div className="mt-4 flex items-center gap-2">
         <button onClick={onTakeBreak} className="puff-btn bg-[#FFD66B] text-[12.5px] px-3.5 h-9">take a break</button>
-        {!paused && <button onClick={onPause} className="puff-btn bg-[#E3DCF5] text-[12.5px] px-3.5 h-9">mute reminders</button>}
+        {!paused && <MuteButton onClick={onPause} />}
       </div>
     </div>
   )
@@ -848,6 +861,13 @@ export default function App() {
         if (screen !== 'resume') setScreen('on_break')
         return
       }
+      // The worker withdraws an unanswered suggestion once its moment has passed. The card has
+      // to go with it: left up, it outlived the session it was about and later showed the new
+      // session's "2m" under "good moment for a break?".
+      if (screen === 'proactive' && s.mode !== 'gentle_nudge') {
+        setScreen('manual'); setIsExpanded(false)
+        return
+      }
       const busy = ['on_break', 'resume', 'confirm', 'pause', 'controls'].includes(screen)
       if (s.mode === 'gentle_nudge' && !busy) {
         setNudgeWhy(s.nudgeKind || (s.lastBoundaryAt && Date.now() - s.lastBoundaryAt < 90_000 ? 'finished' : 'pause'))
@@ -1031,4 +1051,4 @@ export default function App() {
 
 // The design board (showcase.html) renders these screens with fixed sample data for review and export.
 export { PuffPanel, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen }
-export { PrimaryBtn, SecondaryBtn, GhostBtn, BackButton, Sticker, Label, PuffLauncher, WINDOW }
+export { PrimaryBtn, SecondaryBtn, GhostBtn, BackButton, MuteButton, Sticker, Label, PuffLauncher, WINDOW }

@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { Cloud, type Mood, type Season } from './Cloud'
 import { PuffPanel, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen,
-  PrimaryBtn, SecondaryBtn, GhostBtn, BackButton, Sticker, Label, PuffLauncher, WINDOW } from './App'
+  PrimaryBtn, SecondaryBtn, GhostBtn, BackButton, MuteButton, Sticker, Label, PuffLauncher, WINDOW } from './App'
 
 const noop = () => {}
 const controls = { enabled: true, busyUntil: 0, thresholdSeconds: 1800 }
@@ -74,7 +74,7 @@ function Components() {
           <div className="flex gap-2">
             <button className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
             <button className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
-            <button className="puff-btn puff-mono bg-[#E3DCF5] text-[12px] px-3.5 h-8">MUTE</button>
+            <MuteButton onClick={() => {}} size={32} />
           </div>
         </Frame>
         <Frame title="Small actions">
