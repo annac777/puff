@@ -11,7 +11,7 @@ const controls = { enabled: true, busyUntil: 0, thresholdSeconds: 1800 }
 const paused = { ...controls, busyUntil: new Date().setHours(16, 30, 0, 0) + 24 * 3600 * 1000 }
 const hold = { label: 'Registration flow', source: 'Figma', note: 'Review the mobile help pattern' }
 
-const MOODS: Mood[] = ['idle', 'focused', 'tired', 'very_tired', 'sleepy', 'nudge', 'hello', 'finished', 'saving', 'break', 'paused', 'welcome', 'dragged', 'petted']
+const MOODS: Mood[] = ['idle', 'focused', 'tired', 'very_tired', 'sleepy', 'nudge', 'pleading', 'finished', 'saving', 'break', 'paused', 'welcome', 'dragged', 'petted']
 const SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter']
 
 function Frame({ title, children }: { title: string; children: React.ReactNode }) {
@@ -74,7 +74,7 @@ function Components() {
           <div className="flex gap-2">
             <button className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
             <button className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
-            <button className="puff-btn puff-mono bg-[#E3DCF5] text-[12px] px-3.5 h-8">PAUSE</button>
+            <button className="puff-btn puff-mono bg-[#E3DCF5] text-[12px] px-3.5 h-8">MUTE</button>
           </div>
         </Frame>
         <Frame title="Small actions">
@@ -114,7 +114,7 @@ function Components() {
         ))}
         <Frame title="Paused banner">
           <div className="puff-sticker bg-[#FFF4CC] flex items-center justify-between px-3 py-2" style={{ width: 280 }}>
-            <span className="puff-mono text-[11.5px] puff-ink">paused until 4:30 PM</span>
+            <span className="puff-mono text-[11.5px] puff-ink">muted until 4:30 PM</span>
             <span className="puff-mono text-[11.5px] font-bold puff-ink">resume</span>
           </div>
         </Frame>

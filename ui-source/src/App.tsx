@@ -23,7 +23,7 @@ const DEMO_SCREENS: { id: Screen; label: string }[] = [
   { id: 'confirm',   label: 'Confirm' },
   { id: 'on_break',  label: 'Away' },
   { id: 'resume',    label: 'Resume' },
-  { id: 'pause',     label: 'Pause' },
+  { id: 'pause',     label: 'Mute reminders' },
   { id: 'controls',  label: 'Privacy' },
 ]
 
@@ -292,12 +292,12 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 // Research round one: people ignore reminders that arrive mid-focus and resent ones that nag, so
 // the suggestion is a small dialog that is easy to wave off, and it says why it chose this moment.
 // Three reasons to ask, each said plainly. An overdue ask did not find a good moment, so Puff
-// waves hello instead of pretending it did.
+// looks up at you, soaked, instead of pretending it did.
 type NudgeWhy = 'finished' | 'pause' | 'overdue'
 const NUDGE_COPY: Record<NudgeWhy, { mood: Mood; caption: string; question: string }> = {
-  finished: { mood: 'finished', caption: 'you just finished something ✦', question: 'good moment for a break?' },
+  finished: { mood: 'finished', caption: 'just saved or sent ✦', question: 'good moment for a break?' },
   pause:    { mood: 'nudge',    caption: 'of steady focus',               question: 'good moment for a break?' },
-  overdue:  { mood: 'hello',    caption: "you've been at it a while",     question: 'time to come up for air?' },
+  overdue:  { mood: 'pleading', caption: 'no break in a while',           question: 'time to come up for air?' },
 }
 function ProactiveScreen({ workSeconds, why, onTakeBreak, onLater, onPause }: {
   workSeconds: number; why: NudgeWhy; onTakeBreak: () => void; onLater: () => void; onPause: () => void
@@ -318,7 +318,7 @@ function ProactiveScreen({ workSeconds, why, onTakeBreak, onLater, onPause }: {
       <div className="flex gap-2 justify-center mt-3 pb-0.5">
         <button onClick={onTakeBreak} className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
         <button onClick={onLater} className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
-        <button onClick={onPause} className="puff-btn puff-mono bg-[#E3DCF5] text-[12px] px-3.5 h-8">PAUSE</button>
+        <button onClick={onPause} className="puff-btn puff-mono bg-[#E3DCF5] text-[12px] px-3.5 h-8">MUTE</button>
       </div>
     </div>
   )
@@ -336,8 +336,8 @@ function PauseScreen({ onPause, onTurnOff, onBack }: {
       <div className="flex items-center gap-2.5">
         <div className="w-[76px] h-[64px] flex-shrink-0"><Cloud mood="paused" /></div>
         <div>
-          <h2 className="text-[16px] font-extrabold puff-ink">pause puff</h2>
-          <p className="text-[11.5px] text-[#5A6480] leading-snug">for meetings, deadlines, or when you want to keep going.</p>
+          <h2 className="text-[16px] font-extrabold puff-ink">mute reminders</h2>
+          <p className="text-[11.5px] text-[#5A6480] leading-snug">keep working, puff stays quiet. good for meetings and deadlines.</p>
         </div>
       </div>
       <button className={`${option} bg-white`} onClick={() => onPause(Date.now() + 60 * 60 * 1000)}>
@@ -401,10 +401,10 @@ function ControlsScreen({ controls, tuck, onTuck, onTiming, onPause, onResume, o
         </div>
       </section>
       <section className="space-y-2">
-        <Label>pause</Label>
+        <Label>mute reminders</Label>
         {paused ? (
           <div className="puff-sticker bg-[#FFF4CC] flex items-center justify-between px-3 py-2">
-            <span className="text-[12px] puff-ink">paused until {clockTime(controls.busyUntil)}</span>
+            <span className="text-[12px] puff-ink">muted until {clockTime(controls.busyUntil)}</span>
             <GhostBtn onClick={onResume}>resume</GhostBtn>
           </div>
         ) : (
@@ -453,30 +453,33 @@ function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, control
       {paused && (
         <div className="puff-sticker bg-[#FFF4CC] mt-3 flex items-center justify-between px-3 py-2">
           <span className="puff-mono text-[11.5px] puff-ink">
-            {controls.enabled ? `paused until ${clockTime(controls.busyUntil)}` : 'puff is off'}
+            {controls.enabled ? `muted until ${clockTime(controls.busyUntil)}` : 'puff is off'}
           </span>
           <button onClick={onResume} className="puff-mono text-[11.5px] font-bold puff-ink hover:underline underline-offset-2">resume</button>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 mt-5">
-        <Sticker bg="#DCEFFA" tilt={-2}>
-          <div className="px-2.5 pt-2.5 pb-1.5">
+      {/* Stickers fit what they say instead of stretching across the window. */}
+      <div className="flex gap-3 mt-5">
+        <Sticker bg="#DCEFFA" tilt={-2} className="min-w-[96px]">
+          <div className="pl-2.5 pr-4 pt-2.5 pb-1.5">
             <Label>today</Label>
             <p className="text-[16px] font-extrabold puff-ink tabular-nums">{heroTime(todaySeconds)}</p>
           </div>
         </Sticker>
-        <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={2}>
-          <div className="px-2.5 pt-2.5 pb-1.5">
+        <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={2} className="min-w-[80px]">
+          <div className="pl-2.5 pr-4 pt-2.5 pb-1.5">
             <Label>breaks</Label>
             <p className="text-[16px] font-extrabold puff-ink tabular-nums">{breaksToday} ☕</p>
           </div>
         </Sticker>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
+      {/* Two different things: a break means stepping away (Puff holds your place); muting means
+          carrying on without reminders. The labels say which. */}
+      <div className="mt-4 flex items-center gap-2">
         <button onClick={onTakeBreak} className="puff-btn bg-[#FFD66B] text-[12.5px] px-3.5 h-9">take a break</button>
-        {!paused && <button onClick={onPause} className="puff-btn bg-[#E3DCF5] text-[12.5px] px-3.5 h-9">pause</button>}
+        {!paused && <button onClick={onPause} className="puff-btn bg-[#E3DCF5] text-[12.5px] px-3.5 h-9">mute reminders</button>}
       </div>
     </div>
   )
@@ -636,7 +639,7 @@ function PuffPanel({ screen, onMinimize, onControls, children }: {
   const drag = useDragHandle()
   const win = WINDOW[screen]
   return (
-    <div className="puff-window w-80 puff-paper flex flex-col overflow-hidden isolate"
+    <div className="puff-window w-72 puff-paper flex flex-col overflow-hidden isolate"
       style={{
         maxHeight: inExtension ? 'calc(100vh - 96px)' : 'min(720px, 92vh)',
         animation: 'panelExpand 0.2s ease-out forwards',

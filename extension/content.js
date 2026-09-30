@@ -25,7 +25,7 @@
   // Where the person put the cloud. Only a drag changes it. When the panel is taller or wider than
   // the room above and to the left of the cloud, the panel shrinks and scrolls; the cloud never
   // moves to make room. (Moving it to fit was the jump: it went down on open and stayed there.)
-  const CLOUD = 152, PANEL_W = 384, PANEL_H = 700, COMPACT_H = 440, MARGIN = 8;
+  const CLOUD = 152, PANEL_W = 352, PANEL_H = 700, COMPACT_H = 440, MARGIN = 8;
   let anchor = null;
   function layout() {
     const right = anchor ? Math.min(Math.max(0, anchor.right), Math.max(0, window.innerWidth - CLOUD)) : 26;

@@ -41,7 +41,7 @@ export const KEYFRAMES: { id: string; mood: Mood; season?: Season; afterRain?: b
   { id: 'very_tired', mood: 'very_tired', t: [0, 0.8, 1.6, 2.0, 2.5, 3.0] },
   { id: 'sleepy', mood: 'sleepy', t: [0, 0.5, 1.0, 1.5, 2.0, 2.5] },
   { id: 'nudge', mood: 'nudge', t: [0, 0.27, 0.53, 0.8, 1.07, 1.33] },
-  { id: 'hello', mood: 'hello', t: [0, 0.225, 0.45, 0.675, 0.9, 1.4] },
+  { id: 'pleading', mood: 'pleading', t: [0, 0.5, 0.9, 1.3, 1.7, 2.1] },
   { id: 'finished', mood: 'finished', t: [0, 0.3, 0.6, 0.9, 1.2, 1.5] },
   { id: 'saving', mood: 'saving', t: [0, 0.33, 0.67, 1.0, 1.33, 1.67] },
   { id: 'break', mood: 'break', season: 'autumn', t: [0, 1.0, 2.0, 3.5, 4.0, 4.6] },
