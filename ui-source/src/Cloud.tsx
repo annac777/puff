@@ -16,7 +16,7 @@ export function seasonFor(date = new Date()): Season {
   return 'winter'
 }
 
-const INK = '#24414F'
+const INK = '#34405E'  // the same deep ink as the panel's outlines, never pure black
 const BLUSH = '#F4A6B6'
 const FILL: Record<Mood, string> = {
   idle: '#86CCE8', focused: '#7CC2E0', tired: '#93BBCE', very_tired: '#9AB2C1', sleepy: '#A3B3BF',
@@ -26,14 +26,36 @@ const FILL: Record<Mood, string> = {
 // Heavier moods sit lower and flatter, as if the cloud has taken on water.
 const SAG: Partial<Record<Mood, number>> = { tired: 1, very_tired: 3, sleepy: 4 }
 
-function Body({ fill, sag = 0 }: { fill: string; sag?: number }) {
+function BodyShapes({ sag }: { sag: number }) {
   return (
-    <g fill={fill}>
+    <>
       <rect x="14" y={46 + sag} width="92" height={34 - sag} rx={17 - sag / 2} />
       <circle cx="38" cy={50 + sag} r="20" />
       <circle cx="62" cy={40 + sag * 1.4} r={26 - sag / 2} />
       <circle cx="86" cy={52 + sag} r="18" />
-    </g>
+    </>
+  )
+}
+
+// Only the outside of the cloud is outlined. Stroking each puff would draw lines where they
+// overlap and break the silhouette, so the shapes are painted twice: once in ink with a thick
+// stroke, then again in the fill colour on top, which covers every inner edge.
+function Body({ fill, sag = 0 }: { fill: string; sag?: number }) {
+  return (
+    <>
+      <g fill={INK} stroke={INK} strokeWidth="6" strokeLinejoin="round"><BodyShapes sag={sag} /></g>
+      <g fill={fill}><BodyShapes sag={sag} /></g>
+    </>
+  )
+}
+
+/** A small attached shape — an arm, a hand — outlined the same way so it reads as part of Puff. */
+function Limb({ cx, cy, rx, ry, fill }: { cx: number; cy: number; rx: number; ry: number; fill: string }) {
+  return (
+    <>
+      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={INK} stroke={INK} strokeWidth="4.4" />
+      <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={fill} />
+    </>
   )
 }
 
@@ -240,7 +262,7 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
         <>
           <g className="pf-hop pf-vb">
             <Body fill={fill} /><Shine />
-            <g className="pf-wave"><ellipse cx="100" cy="50" rx="7" ry="5.5" fill={fill} /></g>
+            <g className="pf-wave"><Limb cx={100} cy={50} rx={7} ry={5.5} fill={fill} /></g>
             <Cheeks o={0.55} /><OpenEyes blink={false} />
             <path d="M54 65 Q60 72 66 65 Z" fill={INK} />
           </g>
@@ -263,11 +285,11 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
         <g className="pf-hug pf-vb">
           <Body fill={fill} /><Shine /><HappyEyes />
           <Smile d="M56 66 Q60 69 64 66" />
-          <path d="M53 70 h14 v16 l-7 -5 -7 5 z" fill="#F5C842" />
+          <path d="M53 70 h14 v16 l-7 -5 -7 5 z" fill="#F5C842" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
           <ellipse cx="49.5" cy="78" rx="6" ry="4.6" fill="#1A3A48" opacity=".14" />
           <ellipse cx="73.5" cy="78" rx="6" ry="4.6" fill="#1A3A48" opacity=".14" />
-          <ellipse cx="48" cy="76" rx="6" ry="5" fill={fill} />
-          <ellipse cx="72" cy="76" rx="6" ry="5" fill={fill} />
+          <Limb cx={48} cy={76} rx={6} ry={5} fill={fill} />
+          <Limb cx={72} cy={76} rx={6} ry={5} fill={fill} />
           <ellipse cx="46.5" cy="74.5" rx="2.4" ry="1.4" fill="#fff" opacity=".35" />
           <ellipse cx="70.5" cy="74.5" rx="2.4" ry="1.4" fill="#fff" opacity=".35" />
         </g>
@@ -281,9 +303,9 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
             <Body fill={fill} /><Shine />
             {season === 'winter' && (
               <>
-                <path d="M36 34 Q60 4 88 34 Z" fill="#E24B4A" />
-                <circle cx="88" cy="34" r="4" fill="#fff" />
-                <rect x="32" y="31" width="58" height="7" rx="3.5" fill="#fff" />
+                <path d="M36 34 Q60 4 88 34 Z" fill="#F08A8A" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+                <circle cx="88" cy="34" r="4" fill="#fff" stroke={INK} strokeWidth="1.8" />
+                <rect x="32" y="31" width="58" height="7" rx="3.5" fill="#fff" stroke={INK} strokeWidth="1.8" />
               </>
             )}
             <HappyEyes />
@@ -291,8 +313,8 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
             <ellipse cx="78" cy="66" rx="5.5" ry="3.2" fill={BLUSH} opacity=".6" />
             <Smile d="M56 67 Q60 70 64 67" />
           </g>
-          <path d="M79 56 h16 l-2 14 a4 4 0 0 1 -4 3 h-4 a4 4 0 0 1 -4 -3 z" fill="#FAF7F2" stroke="#D3D1C7" />
-          <path d="M95 59 a4 4 0 0 1 0 8" stroke="#D3D1C7" strokeWidth="2" fill="none" />
+          <path d="M95 59 a4 4 0 0 1 0 8" stroke={INK} strokeWidth="2.2" fill="none" />
+          <path d="M79 56 h16 l-2 14 a4 4 0 0 1 -4 3 h-4 a4 4 0 0 1 -4 -3 z" fill="#FFFBF4" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
         </>
       )
     case 'paused':
@@ -302,9 +324,9 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
           <text className="pf-note" style={{ animationDelay: '1.4s' }} x="100" y="30" fontSize="10" fill="#9FA8DA">♫</text>
           <g className="pf-sway pf-vb">
             <Body fill={fill} />
-            <path d="M30 46 Q62 6 94 46" stroke="#5F5E5A" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-            <rect x="24" y="44" width="10" height="15" rx="5" fill="#5F5E5A" />
-            <rect x="90" y="44" width="10" height="15" rx="5" fill="#5F5E5A" />
+            <path d="M30 46 Q62 6 94 46" stroke={INK} strokeWidth="3.5" fill="none" strokeLinecap="round" />
+            <rect x="23" y="44" width="11" height="16" rx="5.5" fill="#F9C9D6" stroke={INK} strokeWidth="2" />
+            <rect x="90" y="44" width="11" height="16" rx="5.5" fill="#F9C9D6" stroke={INK} strokeWidth="2" />
             <path d="M46 60 Q50 63 54 60 M66 60 Q70 63 74 60" stroke={INK} strokeWidth="2.2" fill="none" strokeLinecap="round" />
             <Smile d="M56 68 Q60 70 64 68" />
           </g>

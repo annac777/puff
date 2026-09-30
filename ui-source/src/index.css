@@ -217,3 +217,43 @@ body{padding:24px 24px 24px 24px;box-sizing:border-box}
 @media (prefers-reduced-motion: reduce) {
   .pf-anim, .pf-anim * { animation: none !important; }
 }
+
+/* ─── Retro sticker theme ─────────────────────────────────────────────────────
+   Outline rule: containers and things you can press get a 2px ink outline; decoration (tape,
+   highlights, particles, the paper grid) never does. Ink is a deep navy, not black. */
+:root {
+  --ink: #34405E;
+  --ink-soft: #5A6480;
+  --ink-faint: #8A93A8;
+  --paper: #FFFBF4;
+  --paper-line: #EFE7DA;
+}
+.puff-paper {
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+.puff-mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: .2px; }
+.puff-ink { color: var(--ink); }
+.puff-window { border: 2px solid var(--ink); border-radius: 14px; box-shadow: 3px 3px 0 var(--ink); }
+.puff-sticker { position: relative; border: 2px solid var(--ink); border-radius: 10px; }
+.puff-tape {
+  position: absolute; top: -8px; left: 50%; width: 30px; height: 11px; margin-left: -15px;
+  background: rgba(249, 201, 214, .85); transform: rotate(-4deg); pointer-events: none;
+}
+.puff-btn {
+  border: 2px solid var(--ink); border-radius: 10px; box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink); font-weight: 700; transition: transform .08s ease, box-shadow .08s ease;
+}
+.puff-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.puff-btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ink); }
+.puff-highlight { background: linear-gradient(transparent 55%, #FFE08A 55%); padding: 0 2px; }
+.puff-field {
+  border: 2px solid var(--ink); border-radius: 10px; background: #fff; color: var(--ink);
+}
+.puff-field:focus { outline: none; box-shadow: 2px 2px 0 var(--ink); }
+.puff-winbtn {
+  width: 18px; height: 18px; border: 1.6px solid var(--ink); border-radius: 4px; background: var(--paper);
+  display: inline-flex; align-items: center; justify-content: center; color: var(--ink);
+}
+.puff-winbtn:hover { background: #fff; }

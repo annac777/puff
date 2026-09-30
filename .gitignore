@@ -33,3 +33,6 @@ ui-source/.figma/
 /HANDOFF-FABLE.md
 /docs/handoff-for-hyeji-ko.md
 /docs/ui-test-report-2026-09-12.md
+
+# Design board build output
+ui-source/showcase-dist/

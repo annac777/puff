@@ -1,6 +1,6 @@
 // v2
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Cloud, CloudMark, type Mood } from './Cloud'
+import { Cloud, type Mood } from './Cloud'
 import { inExtension, activityState, currentPage, saveHold, restoreTab, resetActivity, declineBreak,
   pauseUntil, setPuffEnabled, setBreakTiming, TIMING_MINUTES, endOfToday, clockTime,
   heroTime, sourceLabel, pageLabel, formatAway, workStateFor, useDragHandle, type Hold } from './puff-bridge'
@@ -53,22 +53,17 @@ function PuffCloud({ workState = 'fresh', screen, mood, afterRain }: {
 }) {
   return <Cloud mood={mood ?? moodFor(workState, screen)} afterRain={afterRain} />
 }
-function MiniCloud() {
-  return <CloudMark />
-}
-
 // ─── Primitives ───────────────────────────────────────────────────────────────
+// Retro sticker style: a 2px ink outline and a hard offset shadow on anything you can press.
 
 function PrimaryBtn({ children, onClick, shortcut, disabled }: {
   children: React.ReactNode; onClick?: () => void; shortcut?: string; disabled?: boolean
 }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className="w-full h-10 bg-[#7EC8E3] hover:bg-[#5CB5D2] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-[13px] rounded-xl transition-all duration-150 shadow-sm flex items-center justify-center gap-2">
+      className="puff-btn w-full h-10 bg-[#FFD66B] text-[13px] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
       <span>{children}</span>
-      {shortcut && (
-        <span className="text-[10px] font-bold bg-white/20 rounded px-1.5 py-0.5 leading-none">{shortcut}</span>
-      )}
+      {shortcut && <span className="puff-mono text-[10px] font-bold bg-white/60 rounded px-1.5 py-0.5 leading-none">{shortcut}</span>}
     </button>
   )
 }
@@ -78,11 +73,9 @@ function SecondaryBtn({ children, onClick, shortcut }: {
 }) {
   return (
     <button onClick={onClick}
-      className="w-full h-10 bg-white hover:bg-[#F5FBFE] active:scale-[0.98] border border-[#E0DAD4] text-[#374151] font-medium text-[13px] rounded-xl transition-all duration-150 flex items-center justify-center gap-2">
+      className="puff-btn w-full h-10 bg-[#DCEFFA] text-[13px] flex items-center justify-center gap-2">
       <span>{children}</span>
-      {shortcut && (
-        <span className="text-[10px] font-bold bg-[#F0EDE8] text-[#BEC6D0] rounded px-1.5 py-0.5 leading-none">{shortcut}</span>
-      )}
+      {shortcut && <span className="puff-mono text-[10px] font-bold bg-white/60 rounded px-1.5 py-0.5 leading-none">{shortcut}</span>}
     </button>
   )
 }
@@ -90,10 +83,27 @@ function SecondaryBtn({ children, onClick, shortcut }: {
 function GhostBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
     <button onClick={onClick}
-      className="text-[#7A8494] hover:text-[#374151] font-medium text-[12px] transition-colors underline-offset-2 hover:underline">
+      className="puff-mono text-[12px] text-[#5A6480] hover:text-[#34405E] transition-colors underline-offset-2 hover:underline">
       {children}
     </button>
   )
+}
+
+/** A sticker card with a strip of washi tape across the top. */
+function Sticker({ bg, tape = 'rgba(249,201,214,.85)', tilt = 0, className = '', children }: {
+  bg: string; tape?: string; tilt?: number; className?: string; children: React.ReactNode
+}) {
+  return (
+    <div className={`puff-sticker ${className}`} style={{ background: bg, transform: tilt ? `rotate(${tilt}deg)` : undefined }}>
+      <div className="puff-tape" style={{ background: tape }} />
+      {children}
+    </div>
+  )
+}
+
+/** Small monospaced label, the retro-OS voice for everything that is not a headline. */
+function Label({ children }: { children: React.ReactNode }) {
+  return <p className="puff-mono text-[10.5px] text-[#5A6480]">{children}</p>
 }
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────
@@ -273,32 +283,29 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
 // Research round one: people ignore reminders that arrive mid-focus and resent ones that nag, so
-// the suggestion is a small card that is easy to wave off, and it says why it chose this moment.
+// the suggestion is a small dialog that is easy to wave off, and it says why it chose this moment.
 function ProactiveScreen({ workSeconds, finished, onTakeBreak, onLater, onPause }: {
   workSeconds: number; finished: boolean; onTakeBreak: () => void; onLater: () => void; onPause: () => void
 }) {
   return (
-    <div className="px-4 pt-3.5 pb-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="flex items-center gap-3">
-        <div className="w-[72px] h-[60px] flex-shrink-0">
-          <Cloud mood={finished ? 'finished' : 'nudge'} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[24px] font-semibold text-[#1A1A1A] leading-none tabular-nums tracking-tight">{heroTime(workSeconds)}</p>
-          <p className="text-[11.5px] text-[#7A8494] mt-1.5 leading-snug">
-            {finished ? 'You just finished something' : 'focused this stretch'}
+    <div className="px-4 pt-2.5 pb-3.5 text-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="flex items-center justify-center gap-2.5">
+        <div className="w-[72px] h-[60px] flex-shrink-0"><Cloud mood={finished ? 'finished' : 'nudge'} /></div>
+        <div className="text-left">
+          <p className="text-[24px] font-extrabold puff-ink leading-none tabular-nums tracking-tight">{heroTime(workSeconds)}</p>
+          <p className="puff-mono text-[11px] text-[#5A6480] mt-1.5 leading-snug">
+            {finished ? 'you just finished something ✦' : 'of steady focus'}
           </p>
         </div>
       </div>
-      <p className="text-[14px] font-semibold text-[#1A1A1A] mt-3">Good moment for a break?</p>
-      <div className="flex items-center gap-1 mt-2.5">
-        <button onClick={onTakeBreak}
-          className="flex-1 h-9 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] hover:bg-[#E0F2FE] text-[#0369A1] text-[12.5px] font-semibold transition-colors">
-          Take a break
-        </button>
-        <button onClick={onLater} className="px-3 h-9 rounded-xl text-[12.5px] font-medium text-[#7A8494] hover:text-[#374151] hover:bg-[#EDE7E0] transition-colors">Later</button>
-        <button onClick={onPause} className="px-3 h-9 rounded-xl text-[12.5px] font-medium text-[#7A8494] hover:text-[#374151] hover:bg-[#EDE7E0] transition-colors">Pause</button>
+      <p className="text-[14.5px] font-extrabold puff-ink mt-2.5">good moment for a break?</p>
+      <div className="flex gap-2.5 justify-center mt-3">
+        <button onClick={onTakeBreak} className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-4 h-8">BREAK</button>
+        <button onClick={onLater} className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-4 h-8">LATER</button>
       </div>
+      <button onClick={onPause} className="puff-mono text-[11px] text-[#8A93A8] hover:text-[#34405E] mt-2.5 underline-offset-2 hover:underline">
+        or pause for a while
+      </button>
     </div>
   )
 }
@@ -308,25 +315,27 @@ function ProactiveScreen({ workSeconds, finished, onTakeBreak, onLater, onPause 
 function PauseScreen({ onPause, onTurnOff, onBack }: {
   onPause: (until: number) => void; onTurnOff: () => void; onBack: () => void
 }) {
-  const option = 'w-full text-left px-3.5 py-3 rounded-xl bg-white border border-[#E0DAD4] hover:border-[#7EC8E3] hover:bg-[#F5FBFE] transition-colors'
+  const option = 'puff-btn w-full text-left px-3.5 py-2.5 bg-white'
   return (
-    <div className="px-4 py-4 flex flex-col gap-3" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="w-[84px] h-[70px] self-center"><Cloud mood="paused" /></div>
-      <div className="space-y-0.5">
-        <h2 className="text-[15.5px] font-semibold text-[#1A1A1A] tracking-tight">Pause Puff</h2>
-        <p className="text-[12px] text-[#7A8494] leading-snug">For meetings, deadlines, or when you just want to keep going.</p>
+    <div className="px-4 py-3.5 flex flex-col gap-3" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="flex items-center gap-2.5">
+        <div className="w-[76px] h-[64px] flex-shrink-0"><Cloud mood="paused" /></div>
+        <div>
+          <h2 className="text-[16px] font-extrabold puff-ink">pause puff</h2>
+          <p className="text-[11.5px] text-[#5A6480] leading-snug">for meetings, deadlines, or when you want to keep going.</p>
+        </div>
       </div>
       <button className={option} onClick={() => onPause(Date.now() + 60 * 60 * 1000)}>
-        <span className="block text-[13px] font-semibold text-[#374151]">For 1 hour</span>
+        <span className="text-[13px]">for 1 hour</span>
       </button>
       <button className={option} onClick={() => onPause(endOfToday())}>
-        <span className="block text-[13px] font-semibold text-[#374151]">For the rest of today</span>
+        <span className="text-[13px]">for the rest of today</span>
       </button>
-      <button className={option} onClick={onTurnOff}>
-        <span className="block text-[13px] font-semibold text-[#374151]">Turn Puff off</span>
-        <span className="block text-[11.5px] text-[#7A8494] mt-0.5">Click the Puff icon in your toolbar to turn it back on.</span>
+      <button className={`${option} bg-[#FCE3EA]`} onClick={onTurnOff}>
+        <span className="block text-[13px]">turn puff off</span>
+        <span className="block puff-mono text-[10.5px] font-normal text-[#5A6480] mt-0.5">click the puff icon in your toolbar to turn it back on</span>
       </button>
-      <div className="flex justify-center pt-1"><GhostBtn onClick={onBack}>Back</GhostBtn></div>
+      <div className="flex justify-center"><GhostBtn onClick={onBack}>← back</GhostBtn></div>
     </div>
   )
 }
@@ -343,60 +352,60 @@ function ControlsScreen({ controls, onTiming, onPause, onResume, onTurnOff, onBa
 }) {
   const paused = controls.busyUntil > Date.now()
   const minutes = Math.round(controls.thresholdSeconds / 60)
-  const label = 'text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest'
-  const chip = (on: boolean) => `h-8 rounded-lg text-[12px] font-semibold border transition-colors ${on
-    ? 'bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]' : 'bg-white text-[#7A8494] border-[#E0DAD4] hover:border-[#7EC8E3]'}`
+  const chip = (on: boolean) => `puff-btn h-8 text-[12px] ${on ? 'bg-[#FFD66B]' : 'bg-white font-medium'}`
   return (
-    <div className="px-4 py-4 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <section className="space-y-1.5">
-        <p className={label}>What Puff notices</p>
-        <ul className="text-[12px] text-[#374151] leading-relaxed space-y-0.5">
-          <li>How long you've been active at your computer</li>
-          <li>How often you click, type and scroll — counts only</li>
-          <li>When you switch tabs, save, or submit something</li>
-        </ul>
-      </section>
-      <section className="space-y-1.5">
-        <p className={label}>What it never reads</p>
-        <ul className="text-[12px] text-[#374151] leading-relaxed space-y-0.5">
-          <li>What you type, or what's on a page</li>
-          <li>Tab titles and links — except the one page you choose to save for a break</li>
-        </ul>
-        <p className="text-[11.5px] text-[#7A8494] leading-snug">Everything stays on this computer. Puff also stays quiet on video calls, payment pages and in full screen.</p>
-      </section>
-      <section className="space-y-1.5">
-        <p className={label}>Suggest a break after about</p>
-        <div className="grid grid-cols-4 gap-1.5">
+    <div className="px-4 pt-4 pb-3.5 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <Sticker bg="#DCEFFA" tilt={-1}>
+        <div className="px-3 pt-3 pb-2.5 space-y-1">
+          <Label>what puff notices</Label>
+          <ul className="text-[12px] puff-ink leading-relaxed">
+            <li>· how long you've been active at your computer</li>
+            <li>· how often you click, type and scroll — counts only</li>
+            <li>· when you switch tabs, save, or submit something</li>
+          </ul>
+        </div>
+      </Sticker>
+      <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={1}>
+        <div className="px-3 pt-3 pb-2.5 space-y-1">
+          <Label>what it never reads</Label>
+          <ul className="text-[12px] puff-ink leading-relaxed">
+            <li>· what you type, or what's on a page</li>
+            <li>· tab titles and links — except the one page you save for a break</li>
+          </ul>
+          <p className="puff-mono text-[10.5px] text-[#5A6480] leading-snug pt-1">everything stays on this computer. puff stays quiet on video calls, payment pages and in full screen.</p>
+        </div>
+      </Sticker>
+      <section className="space-y-2">
+        <Label>suggest a break after about</Label>
+        <div className="grid grid-cols-4 gap-2">
           {TIMING_MINUTES.map(m => (
-            <button key={m} className={chip(m === minutes)} onClick={() => onTiming(m)}>{m} min</button>
+            <button key={m} className={chip(m === minutes)} onClick={() => onTiming(m)}>{m}m</button>
           ))}
         </div>
       </section>
-      <section className="space-y-1.5">
-        <p className={label}>Pause</p>
+      <section className="space-y-2">
+        <Label>pause</Label>
         {paused ? (
-          <div className="flex items-center justify-between bg-white border border-[#E0DAD4] rounded-xl px-3 py-2">
-            <span className="text-[12px] text-[#374151]">Paused until {clockTime(controls.busyUntil)}</span>
-            <GhostBtn onClick={onResume}>Resume</GhostBtn>
+          <div className="puff-sticker bg-[#FFF4CC] flex items-center justify-between px-3 py-2">
+            <span className="text-[12px] puff-ink">paused until {clockTime(controls.busyUntil)}</span>
+            <GhostBtn onClick={onResume}>resume</GhostBtn>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
             <button className={chip(false)} onClick={() => onPause(Date.now() + 60 * 60 * 1000)}>1 hour</button>
-            <button className={chip(false)} onClick={() => onPause(endOfToday())}>Rest of today</button>
+            <button className={chip(false)} onClick={() => onPause(endOfToday())}>rest of today</button>
           </div>
         )}
-        <button className="text-[11.5px] text-[#7A8494] hover:text-[#374151] underline-offset-2 hover:underline" onClick={onTurnOff}>
-          Turn Puff off
-        </button>
+        <GhostBtn onClick={onTurnOff}>turn puff off</GhostBtn>
       </section>
-      <div className="flex justify-center"><GhostBtn onClick={onBack}>Done</GhostBtn></div>
+      <div className="flex justify-center"><GhostBtn onClick={onBack}>← done</GhostBtn></div>
     </div>
   )
 }
 
 // Home: how long you have been at it is the headline. Taking a break is there, but small — the
 // suggestion comes at a good moment on its own. Modelled on the glanceable status of menu-bar
-// break tools and Forest's single big number.
+// break tools and Forest's single big number, dressed as a sticker notebook.
 function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, controls, onTakeBreak, onPause, onResume }: {
   workState: WorkState; workSeconds: number; todaySeconds: number; breaksToday: number
   controls: Controls; onTakeBreak: () => void; onPause: () => void; onResume: () => void
@@ -404,49 +413,47 @@ function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, control
   const [petted, setPetted] = useState(false)
   const paused = !controls.enabled || controls.busyUntil > Date.now()
   const mood: Mood = petted ? 'petted' : paused ? 'paused' : BASE_MOOD[workState]
-  const tile = 'rounded-xl bg-white border border-[#EAE5DF] px-3 py-2'
   return (
-    <div className="px-5 pt-3 pb-4 flex flex-col" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="flex flex-col items-center">
-        <div className="w-[120px] h-[100px]" onMouseEnter={() => setPetted(true)} onMouseLeave={() => setPetted(false)}>
+    <div className="px-4 pt-3 pb-4 flex flex-col" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="flex items-center gap-2">
+        <div className="w-[104px] h-[88px] flex-shrink-0" onMouseEnter={() => setPetted(true)} onMouseLeave={() => setPetted(false)}>
           <Cloud mood={mood} />
         </div>
-        <p className="text-[36px] font-semibold text-[#1A1A1A] leading-none tabular-nums tracking-tight mt-1">{heroTime(workSeconds)}</p>
-        <p className="text-[12px] text-[#7A8494] mt-2">{workSeconds < 60 ? 'Just getting started' : 'focused this stretch'}</p>
+        <div className="min-w-0">
+          <p className="text-[34px] font-extrabold puff-ink leading-none tabular-nums tracking-tight">{heroTime(workSeconds)}</p>
+          <p className="text-[12px] text-[#5A6480] mt-2 inline-block">
+            <span className="puff-highlight">{workSeconds < 60 ? 'just getting started' : 'of good focus'}</span>
+          </p>
+        </div>
       </div>
 
-      {paused ? (
-        <div className="mt-3.5 flex items-center justify-between rounded-xl bg-[#FEF9C3] border border-[#FDE68A] px-3 py-2">
-          <span className="text-[12px] text-[#854D0E]">
-            {controls.enabled ? `Paused until ${clockTime(controls.busyUntil)}` : 'Puff is off'}
+      {paused && (
+        <div className="puff-sticker bg-[#FFF4CC] mt-3 flex items-center justify-between px-3 py-2">
+          <span className="puff-mono text-[11.5px] puff-ink">
+            {controls.enabled ? `paused until ${clockTime(controls.busyUntil)}` : 'puff is off'}
           </span>
-          <button onClick={onResume} className="text-[12px] font-semibold text-[#854D0E] hover:underline underline-offset-2">Resume</button>
+          <button onClick={onResume} className="puff-mono text-[11.5px] font-bold puff-ink hover:underline underline-offset-2">resume</button>
         </div>
-      ) : (
-        <p className="mt-3.5 text-center text-[11.5px] text-[#9AA3AF]">I'll suggest a break at a good moment.</p>
       )}
 
-      <div className="grid grid-cols-2 gap-2 mt-3.5">
-        <div className={tile}>
-          <p className="text-[10.5px] text-[#9AA3AF]">Today</p>
-          <p className="text-[14px] font-semibold text-[#374151] tabular-nums">{heroTime(todaySeconds)}</p>
-        </div>
-        <div className={tile}>
-          <p className="text-[10.5px] text-[#9AA3AF]">Breaks today</p>
-          <p className="text-[14px] font-semibold text-[#374151] tabular-nums">{breaksToday}</p>
-        </div>
+      <div className="grid grid-cols-2 gap-3 mt-5">
+        <Sticker bg="#DCEFFA" tilt={-2}>
+          <div className="px-2.5 pt-2.5 pb-1.5">
+            <Label>today</Label>
+            <p className="text-[16px] font-extrabold puff-ink tabular-nums">{heroTime(todaySeconds)}</p>
+          </div>
+        </Sticker>
+        <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={2}>
+          <div className="px-2.5 pt-2.5 pb-1.5">
+            <Label>breaks</Label>
+            <p className="text-[16px] font-extrabold puff-ink tabular-nums">{breaksToday} ☕</p>
+          </div>
+        </Sticker>
       </div>
 
-      <div className="mt-4 pt-3 border-t border-[#EAE5DF] flex items-center justify-between">
-        <button onClick={onTakeBreak} className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-            <path d="M3 6h8v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Z" /><path d="M11 7h1a2 2 0 0 1 0 4h-1" /><path d="M6 2.5c0 1 1 1 1 2M8.5 2.5c0 1 1 1 1 2" />
-          </svg>
-          Take a break
-        </button>
-        {!paused && (
-          <button onClick={onPause} className="text-[12.5px] font-medium text-[#7A8494] hover:text-[#374151] transition-colors">Pause</button>
-        )}
+      <div className="mt-4 flex items-center justify-between">
+        <button onClick={onTakeBreak} className="puff-btn bg-[#FFD66B] text-[12.5px] px-3.5 h-9">take a break</button>
+        {!paused && <GhostBtn onClick={onPause}>pause</GhostBtn>}
       </div>
     </div>
   )
@@ -471,46 +478,35 @@ function ConfirmScreen({ workState, page, note, onNote, onConfirm, onBack }: {
   }, [onBack, onConfirm])
 
   return (
-    <div className="px-4 py-4 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-9 flex-shrink-0" style={{ animation: 'cloudBreathe 2.4s ease-in-out infinite' }}>
-          <PuffCloud workState={workState} screen="confirm" small />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were working on</p>
-          <p className="text-[13px] font-semibold text-[#0369A1] leading-snug">{page.label}</p>
-        </div>
+    <div className="px-4 pt-3 pb-4 flex flex-col gap-3.5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="flex items-center gap-2">
+        <div className="w-[76px] h-[64px] flex-shrink-0"><PuffCloud workState={workState} screen="confirm" /></div>
+        <p className="puff-mono text-[11.5px] text-[#5A6480] leading-snug">i'll bookmark where you are, so coming back is easy.</p>
       </div>
 
-      {page.source && (
-        <div className="flex gap-1.5 flex-wrap">
-          <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md border bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]">
-            {page.source}
-          </span>
+      <Sticker bg="#FFF4CC" tape="rgba(191,217,238,.9)" tilt={-1}>
+        <div className="px-3 pt-3 pb-2.5">
+          <Label>you were working on</Label>
+          <p className="text-[13.5px] font-bold puff-ink leading-snug">{page.label}</p>
+          {page.source && <p className="puff-mono text-[10.5px] text-[#5A6480] mt-0.5">in {page.source}</p>}
         </div>
-      )}
+      </Sticker>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="puff-note" className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">
-          Next · optional
-        </label>
+        <label htmlFor="puff-note" className="puff-mono text-[10.5px] text-[#5A6480]">next step · optional</label>
         <textarea
           id="puff-note"
           ref={ref}
           value={note}
           onChange={e => onNote(e.target.value.slice(0, 200))}
           rows={2}
-          placeholder="Review the mobile help pattern"
-          className="w-full resize-none text-[13px] text-[#1A1A1A] bg-[#F7F5F2] border border-[#E0DAD4] focus:border-[#7EC8E3] focus:ring-2 focus:ring-[#7EC8E3]/20 rounded-xl px-3 py-2.5 outline-none transition-all leading-relaxed"
+          placeholder="review the mobile help pattern"
+          className="puff-field w-full resize-none text-[13px] px-3 py-2.5 leading-relaxed placeholder:text-[#B3B9C6]"
         />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <PrimaryBtn onClick={onConfirm}>Start my break</PrimaryBtn>
-        <div className="flex justify-center">
-          <GhostBtn onClick={onBack}>Back</GhostBtn>
-        </div>
-      </div>
+      <PrimaryBtn onClick={onConfirm}>start my break</PrimaryBtn>
+      <div className="flex justify-center -mt-1"><GhostBtn onClick={onBack}>← back</GhostBtn></div>
     </div>
   )
 }
@@ -521,24 +517,22 @@ function OnBreakScreen({ hold, awaySeconds, onBack }: {
   onBack: () => void
 }) {
   return (
-    <div className="px-5 pt-3 pb-4 flex flex-col items-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="w-[120px] h-[100px]"><Cloud mood="break" /></div>
-      <p className="text-[11.5px] text-[#9AA3AF] mt-1">Away for</p>
-      <p className="text-[36px] font-semibold text-[#1A1A1A] leading-none tabular-nums tracking-tight mt-1">{formatAway(awaySeconds)}</p>
-      <p className="text-[12px] text-[#7A8494] mt-2">Your place is held.</p>
+    <div className="px-4 pt-3 pb-4 flex flex-col items-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="w-[112px] h-[94px]"><Cloud mood="break" /></div>
+      <Label>away for</Label>
+      <p className="text-[34px] font-extrabold puff-ink leading-none tabular-nums tracking-tight mt-1">{formatAway(awaySeconds)}</p>
 
       {hold && (
-        <div className="w-full bg-white rounded-xl border border-[#EAE5DF] px-3.5 py-2.5 space-y-0.5 mt-4">
-          <p className="text-[10.5px] text-[#9AA3AF]">You were working on</p>
-          <p className="text-[12.5px] font-medium text-[#374151] leading-snug">{hold.label}</p>
-          {hold.note && <p className="text-[12px] text-[#7A8494] leading-snug"><span className="font-semibold">Next:</span> {hold.note}</p>}
-        </div>
+        <Sticker bg="#FFF4CC" tape="rgba(191,217,238,.9)" tilt={-1} className="w-full mt-5">
+          <div className="px-3 pt-3 pb-2.5">
+            <Label>you were on</Label>
+            <p className="text-[13px] font-bold puff-ink leading-snug">{hold.label}</p>
+            {hold.note && <p className="text-[12px] text-[#5A6480] leading-snug mt-0.5">next → {hold.note}</p>}
+          </div>
+        </Sticker>
       )}
 
-      <button onClick={onBack}
-        className="mt-4 text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors">
-        I'm back →
-      </button>
+      <button onClick={onBack} className="puff-btn bg-[#CDEBD6] text-[12.5px] px-4 h-9 mt-4">i'm back →</button>
     </div>
   )
 }
@@ -550,33 +544,27 @@ function ResumeScreen({ hold, awaySeconds, afterRain, onDone }: {
   onDone: () => void
 }) {
   return (
-    <div className="px-5 pt-3 pb-4 flex flex-col items-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="w-[120px] h-[100px]"><Cloud mood="welcome" afterRain={afterRain} /></div>
-      <h2 className="text-[22px] font-semibold text-[#1A1A1A] tracking-tight mt-1">Welcome back</h2>
-      <p className="text-[12px] text-[#7A8494] mt-1">You were away for {formatAway(awaySeconds)}.</p>
+    <div className="px-4 pt-3 pb-4 flex flex-col items-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="w-[112px] h-[94px]"><Cloud mood="welcome" afterRain={afterRain} /></div>
+      <h2 className="text-[21px] font-extrabold puff-ink tracking-tight mt-1">welcome back!</h2>
+      <p className="text-[12px] text-[#5A6480] mt-1"><span className="puff-highlight">you were away {formatAway(awaySeconds)}</span></p>
 
       {hold ? (
-        <div className="w-full bg-white rounded-xl border border-[#EAE5DF] px-3.5 py-3 space-y-1.5 mt-4">
-          <p className="text-[10.5px] text-[#9AA3AF]">You were working on</p>
-          <p className="text-[13.5px] font-semibold text-[#1A1A1A] leading-snug">{hold.label}</p>
-          {hold.source && (
-            <span className="inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-md border bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]">
-              {hold.source}
-            </span>
-          )}
-          {hold.note && (
-            <p className="text-[12.5px] text-[#854D0E] leading-snug bg-[#FFFBEB] border border-[#FDE68A]/60 rounded-lg px-2.5 py-2">
-              <span className="font-semibold">Next:</span> {hold.note}
-            </p>
-          )}
-        </div>
+        <Sticker bg="#FFF4CC" tape="rgba(191,217,238,.9)" tilt={-1} className="w-full mt-5">
+          <div className="px-3 pt-3 pb-2.5 space-y-0.5">
+            <Label>you were working on</Label>
+            <p className="text-[13.5px] font-bold puff-ink leading-snug">{hold.label}</p>
+            {hold.source && <p className="puff-mono text-[10.5px] text-[#5A6480]">in {hold.source}</p>}
+            {hold.note && <p className="text-[12.5px] puff-ink leading-snug pt-1">next → {hold.note}</p>}
+          </div>
+        </Sticker>
       ) : (
-        <p className="w-full text-[12.5px] text-[#7A8494] leading-snug bg-white rounded-xl border border-[#EAE5DF] px-3.5 py-3 mt-4">
-          Nothing was saved for this break, so there's no page to return to.
+        <p className="w-full puff-mono text-[11.5px] text-[#5A6480] leading-snug text-center mt-4">
+          nothing was saved for this break, so there's no page to return to.
         </p>
       )}
 
-      <div className="w-full mt-4"><PrimaryBtn onClick={onDone}>Resume</PrimaryBtn></div>
+      <div className="w-full mt-4"><PrimaryBtn onClick={onDone}>resume my work</PrimaryBtn></div>
     </div>
   )
 }
@@ -606,43 +594,43 @@ function PuffLauncher({ mood, onOpen }: { mood: Mood; onOpen: () => void }) {
   )
 }
 
+// Each screen is a little window with its own file name and title-bar colour, like a desk of
+// open notes. The border is a real outline; the only shadow is a hard offset, which the iframe
+// padding has room for.
+const WINDOW: Record<Screen, { name: string; bar: string }> = {
+  manual:    { name: 'puff.exe',     bar: '#BFD9EE' },
+  proactive: { name: 'hey.txt',      bar: '#FCE3EA' },
+  confirm:   { name: 'bookmark.doc', bar: '#FFF1C9' },
+  on_break:  { name: 'away.mp3',     bar: '#CDEBD6' },
+  resume:    { name: 'welcome.png',  bar: '#E3DCF5' },
+  pause:     { name: 'shh.zzz',      bar: '#E3DCF5' },
+  controls:  { name: 'settings.cfg', bar: '#EDE6DA' },
+}
+
 function PuffPanel({ screen, onMinimize, onControls, children }: {
   screen: Screen; onMinimize: () => void; onControls: () => void; children: React.ReactNode
 }) {
   const drag = useDragHandle()
-  const label: Partial<Record<Screen, string>> = {
-    confirm: 'Hold your place', on_break: 'Away', resume: 'Welcome back', pause: 'Pause', controls: 'Privacy & settings',
-  }
+  const win = WINDOW[screen]
   return (
-    <div className="w-80 bg-[#F7F5F2] rounded-2xl flex flex-col overflow-hidden isolate"
+    <div className="puff-window w-80 puff-paper flex flex-col overflow-hidden isolate"
       style={{
-        // No drop shadow: the iframe clips anything painted outside it, and the seam shows while
-        // dragging. A plain border reads as a card on any page background and cannot be clipped.
-        border: '1px solid #DCD6D0',
-        maxHeight: inExtension ? 'calc(100vh - 96px)' : 'min(540px, 80vh)',
+        maxHeight: inExtension ? 'calc(100vh - 96px)' : 'min(720px, 92vh)',
         animation: 'panelExpand 0.2s ease-out forwards',
       }}>
       <div {...drag}
-        className="flex items-center justify-between px-4 py-2.5 border-b border-[#EAE5DF] flex-shrink-0 select-none"
-        style={{ background: 'rgba(255,255,255,0.6)', borderTopLeftRadius: 16, borderTopRightRadius: 16, cursor: inExtension ? 'grab' : 'default', touchAction: 'none' }}>
-        <div className="flex items-center gap-2">
-          <MiniCloud />
-          <span className="text-[13px] font-semibold text-[#1A1A1A]">Puff</span>
-          {label[screen] && <span className="text-[11px] text-[#BEC6D0] font-medium">· {label[screen]}</span>}
-        </div>
-        <div className="flex items-center gap-0.5">
-        <button onClick={onControls} aria-label="Privacy and settings"
-          className="w-7 h-7 flex items-center justify-center text-[#BEC6D0] hover:text-[#7A8494] rounded-lg hover:bg-[#EDE7E0] transition-colors">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-            <path d="M3 4h10M3 8h10M3 12h10" /><circle cx="6" cy="4" r="1.4" fill="#F7F5F2" /><circle cx="10" cy="8" r="1.4" fill="#F7F5F2" /><circle cx="5" cy="12" r="1.4" fill="#F7F5F2" />
-          </svg>
-        </button>
-        <button onClick={onMinimize} aria-label="Minimize"
-          className="w-7 h-7 flex items-center justify-center text-[#BEC6D0] hover:text-[#7A8494] rounded-lg hover:bg-[#EDE7E0] transition-colors">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-            <path d="M 2 7 L 12 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
+        className="flex items-center justify-between pl-3 pr-2 py-1.5 border-b-2 border-[#34405E] flex-shrink-0 select-none"
+        style={{ background: win.bar, cursor: inExtension ? 'grab' : 'default', touchAction: 'none' }}>
+        <span className="puff-mono text-[12px] puff-ink font-semibold">♡ {win.name}</span>
+        <div className="flex items-center gap-1.5">
+          <button onClick={onControls} aria-label="Privacy and settings" className="puff-winbtn">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M2 4h12M2 8h12M2 12h12" />
+            </svg>
+          </button>
+          <button onClick={onMinimize} aria-label="Minimize" className="puff-winbtn">
+            <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5 H8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+          </button>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto overscroll-contain" key={screen}>
@@ -985,3 +973,6 @@ export default function App() {
     </div>
   )
 }
+
+// The design board (showcase.html) renders these screens with fixed sample data for review and export.
+export { PuffPanel, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen }
