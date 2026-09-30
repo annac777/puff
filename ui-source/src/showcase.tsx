@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { Cloud, type Mood, type Season } from './Cloud'
 import { PuffPanel, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen,
-  PrimaryBtn, SecondaryBtn, GhostBtn, BackButton, MuteButton, Sticker, Label, PuffLauncher, WINDOW } from './App'
+  PrimaryBtn, SecondaryBtn, GhostBtn, BackButton, Sticker, Label, PuffLauncher, WINDOW } from './App'
 
 const noop = () => {}
 const controls = { enabled: true, busyUntil: 0, thresholdSeconds: 1800 }
@@ -74,7 +74,6 @@ function Components() {
           <div className="flex gap-2">
             <button className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
             <button className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
-            <MuteButton onClick={() => {}} size={32} />
           </div>
         </Frame>
         <Frame title="Small actions">
@@ -152,20 +151,20 @@ function Board() {
 
       <h2 style={section}>Screens</h2>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, alignItems: 'flex-start' }}>
-        <Frame title="Home"><PuffPanel screen="manual" onMinimize={noop} onControls={noop}>
-          <HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onPause={noop} onResume={noop} />
+        <Frame title="Home"><PuffPanel screen="manual" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}>
+          <HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onResume={noop} />
         </PuffPanel></Frame>
-        <Frame title="Home · paused"><PuffPanel screen="manual" onMinimize={noop} onControls={noop}>
-          <HomeScreen workState="focused" workSeconds={1500} todaySeconds={13200} breaksToday={2} controls={paused} onTakeBreak={noop} onPause={noop} onResume={noop} />
+        <Frame title="Home · paused"><PuffPanel screen="manual" onMinimize={noop} onControls={noop} mute={{ muted: true, onClick: noop }}>
+          <HomeScreen workState="focused" workSeconds={1500} todaySeconds={13200} breaksToday={2} controls={paused} onTakeBreak={noop} onResume={noop} />
         </PuffPanel></Frame>
-        <Frame title="Suggestion · just finished something"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop}>
-          <ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} onPause={noop} />
+        <Frame title="Suggestion · just finished something"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}>
+          <ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} />
         </PuffPanel></Frame>
-        <Frame title="Suggestion · quiet moment"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop}>
-          <ProactiveScreen workSeconds={2880} why="pause" onTakeBreak={noop} onLater={noop} onPause={noop} />
+        <Frame title="Suggestion · quiet moment"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}>
+          <ProactiveScreen workSeconds={2880} why="pause" onTakeBreak={noop} onLater={noop} />
         </PuffPanel></Frame>
-        <Frame title="Suggestion · long overdue"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop}>
-          <ProactiveScreen workSeconds={2880 * 1.6} why="overdue" onTakeBreak={noop} onLater={noop} onPause={noop} />
+        <Frame title="Suggestion · long overdue"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}>
+          <ProactiveScreen workSeconds={2880 * 1.6} why="overdue" onTakeBreak={noop} onLater={noop} />
         </PuffPanel></Frame>
         <Frame title="Hold your place"><PuffPanel screen="confirm" onMinimize={noop} onControls={noop}>
           <ConfirmScreen workState="tired" page={{ label: hold.label, source: hold.source }} note="" onNote={noop} onConfirm={noop} onBack={noop} />

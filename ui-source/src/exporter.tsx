@@ -19,11 +19,11 @@ function Piece({ name, children, pad = 16 }: { name: string; children: React.Rea
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 const SCREENS: [string, React.ReactNode][] = [
-  ['screen-01-home', <PuffPanel screen="manual" onMinimize={noop} onControls={noop}><HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onPause={noop} onResume={noop} /></PuffPanel>],
-  ['screen-02-home-paused', <PuffPanel screen="manual" onMinimize={noop} onControls={noop}><HomeScreen workState="focused" workSeconds={1500} todaySeconds={13200} breaksToday={2} controls={paused} onTakeBreak={noop} onPause={noop} onResume={noop} /></PuffPanel>],
-  ['screen-03-suggestion-finished', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
-  ['screen-04-suggestion-quiet', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} why="pause" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
-  ['screen-04b-suggestion-overdue', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={4620} why="overdue" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
+  ['screen-01-home', <PuffPanel screen="manual" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onResume={noop} /></PuffPanel>],
+  ['screen-02-home-paused', <PuffPanel screen="manual" onMinimize={noop} onControls={noop} mute={{ muted: true, onClick: noop }}><HomeScreen workState="focused" workSeconds={1500} todaySeconds={13200} breaksToday={2} controls={paused} onTakeBreak={noop} onResume={noop} /></PuffPanel>],
+  ['screen-03-suggestion-finished', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} /></PuffPanel>],
+  ['screen-04-suggestion-quiet', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><ProactiveScreen workSeconds={2880} why="pause" onTakeBreak={noop} onLater={noop} /></PuffPanel>],
+  ['screen-04b-suggestion-overdue', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><ProactiveScreen workSeconds={4620} why="overdue" onTakeBreak={noop} onLater={noop} /></PuffPanel>],
   ['screen-05-hold-your-place', <PuffPanel screen="confirm" onMinimize={noop} onControls={noop}><ConfirmScreen workState="tired" page={{ label: hold.label, source: hold.source }} note="" onNote={noop} onConfirm={noop} onBack={noop} /></PuffPanel>],
   ['screen-06-on-a-break', <PuffPanel screen="on_break" onMinimize={noop} onControls={noop}><OnBreakScreen hold={hold} awaySeconds={420} onBack={noop} /></PuffPanel>],
   ['screen-07-welcome-back', <PuffPanel screen="resume" onMinimize={noop} onControls={noop}><ResumeScreen hold={hold} awaySeconds={900} afterRain onDone={noop} /></PuffPanel>],
@@ -109,8 +109,8 @@ function Corner({ panel, mood }: { panel?: React.ReactNode; mood: Mood }) {
 
 const SCENES: [string, React.ReactNode][] = [
   ['context-1-working', <MockPage><Corner mood="focused" /></MockPage>],
-  ['context-2-open', <MockPage><Corner mood="tired" panel={<PuffPanel screen="manual" onMinimize={noop} onControls={noop}><HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onPause={noop} onResume={noop} /></PuffPanel>} /></MockPage>],
-  ['context-3-suggestion', <MockPage><Corner mood="nudge" panel={<PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>} /></MockPage>],
+  ['context-2-open', <MockPage><Corner mood="tired" panel={<PuffPanel screen="manual" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onResume={noop} /></PuffPanel>} /></MockPage>],
+  ['context-3-suggestion', <MockPage><Corner mood="nudge" panel={<PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} /></PuffPanel>} /></MockPage>],
   ['context-4-on-a-break', <MockPage><Corner mood="break" panel={<PuffPanel screen="on_break" onMinimize={noop} onControls={noop}><OnBreakScreen hold={hold} awaySeconds={420} onBack={noop} /></PuffPanel>} /></MockPage>],
   ['context-5-welcome-back', <MockPage><Corner mood="welcome" panel={<PuffPanel screen="resume" onMinimize={noop} onControls={noop}><ResumeScreen hold={hold} awaySeconds={900} afterRain onDone={noop} /></PuffPanel>} /></MockPage>],
 ]
@@ -121,6 +121,8 @@ function Exporter() {
     if (kind === 'frames') freezeAll()
     // Screens and frames export with a transparent background so they drop cleanly onto any Figma canvas.
     if (kind !== 'context') document.body.style.background = 'transparent'
+    // In use a tall screen scrolls inside the window; the style guide shows all of it.
+    if (kind === 'screens') document.head.insertAdjacentHTML('beforeend', '<style>.puff-window{max-height:none!important}</style>')
     // The export script reads these bounds back through --dump-dom.
     const bounds = [...document.querySelectorAll<HTMLElement>('[data-export]')].map(el => {
       const r = el.getBoundingClientRect()

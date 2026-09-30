@@ -101,13 +101,15 @@ function Sticker({ bg, tape = 'rgba(249,201,214,.85)', tilt = 0, className = '',
   )
 }
 
-/** Mute reminders: a round button with the power symbol (Heroicons "power", outline). The label
- *  lives in aria-label and the tooltip, since the icon alone carries it visually. */
-function MuteButton({ onClick, size = 36 }: { onClick: () => void; size?: number }) {
+/** Mute reminders lives in the title bar as a round power button (Heroicons "power", outline):
+ *  it is a setting for the window, not a choice on the screen. Filled in ink while muted, and
+ *  pressing it then turns reminders back on. */
+function MuteButton({ muted, onClick }: { muted: boolean; onClick: () => void }) {
+  const label = muted ? 'Resume reminders' : 'Mute reminders'
   return (
-    <button onClick={onClick} aria-label="mute reminders" title="mute reminders"
-      className="puff-btn bg-[#E3DCF5] rounded-full flex items-center justify-center flex-shrink-0" style={{ width: size, height: size, borderRadius: 999 }}>
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+    <button onClick={onClick} aria-label={label} title={label} aria-pressed={muted}
+      className="puff-winbtn" style={{ borderRadius: 999, background: muted ? '#34405E' : '#E3DCF5', color: muted ? '#FFFBF4' : undefined }}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" />
       </svg>
     </button>
@@ -312,8 +314,8 @@ const NUDGE_COPY: Record<NudgeWhy, { mood: Mood; caption: string; question: stri
   pause:    { mood: 'nudge',    caption: 'of steady focus',               question: 'good moment for a break?' },
   overdue:  { mood: 'pleading', caption: 'no break in a while',           question: 'time to come up for air?' },
 }
-function ProactiveScreen({ workSeconds, why, onTakeBreak, onLater, onPause }: {
-  workSeconds: number; why: NudgeWhy; onTakeBreak: () => void; onLater: () => void; onPause: () => void
+function ProactiveScreen({ workSeconds, why, onTakeBreak, onLater }: {
+  workSeconds: number; why: NudgeWhy; onTakeBreak: () => void; onLater: () => void
 }) {
   const copy = NUDGE_COPY[why]
   return (
@@ -331,7 +333,6 @@ function ProactiveScreen({ workSeconds, why, onTakeBreak, onLater, onPause }: {
       <div className="flex gap-2 justify-center mt-3 pb-0.5">
         <button onClick={onTakeBreak} className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
         <button onClick={onLater} className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
-        <MuteButton onClick={onPause} size={32} />
       </div>
     </div>
   )
@@ -426,11 +427,11 @@ function ControlsScreen({ controls, tuck, onTuck, onTiming, onPause, onResume, o
             <button className={chip(false)} onClick={() => onPause(endOfToday())}>rest of today</button>
           </div>
         )}
-        <GhostBtn onClick={onTurnOff}>turn puff off</GhostBtn>
+        <button onClick={onTurnOff} className="puff-btn w-full text-left bg-[#FCE3EA] px-3 py-2 text-[12.5px]">turn puff off</button>
       </section>
       <section className="space-y-2">
         <Label>on the page</Label>
-        <button onClick={() => onTuck(!tuck)} className="puff-btn w-full bg-white flex items-center justify-between px-3 h-10 text-[12.5px] font-medium">
+        <button onClick={() => onTuck(!tuck)} className="puff-btn w-full bg-white flex items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] font-medium">
           <span>hide puff until it has something to say</span>
           <span className={`puff-mono text-[11px] px-1.5 rounded border-2 border-[#34405E] ${tuck ? 'bg-[#FFD66B]' : 'bg-white'}`}>{tuck ? 'ON' : 'OFF'}</span>
         </button>
@@ -442,9 +443,9 @@ function ControlsScreen({ controls, tuck, onTuck, onTiming, onPause, onResume, o
 // Home: how long you have been at it is the headline. Taking a break is there, but small — the
 // suggestion comes at a good moment on its own. Modelled on the glanceable status of menu-bar
 // break tools and Forest's single big number, dressed as a sticker notebook.
-function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, controls, onTakeBreak, onPause, onResume }: {
+function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, controls, onTakeBreak, onResume }: {
   workState: WorkState; workSeconds: number; todaySeconds: number; breaksToday: number
-  controls: Controls; onTakeBreak: () => void; onPause: () => void; onResume: () => void
+  controls: Controls; onTakeBreak: () => void; onResume: () => void
 }) {
   const [petted, setPetted] = useState(false)
   const paused = !controls.enabled || controls.busyUntil > Date.now()
@@ -488,11 +489,8 @@ function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, control
         </Sticker>
       </div>
 
-      {/* Two different things: a break means stepping away (Puff holds your place); muting means
-          carrying on without reminders. The labels say which. */}
       <div className="mt-4 flex items-center gap-2">
         <button onClick={onTakeBreak} className="puff-btn bg-[#FFD66B] text-[12.5px] px-3.5 h-9">take a break</button>
-        {!paused && <MuteButton onClick={onPause} />}
       </div>
     </div>
   )
@@ -646,13 +644,16 @@ const WINDOW: Record<Screen, { name: string; bar: string }> = {
   controls:  { name: 'settings.cfg', bar: '#EDE6DA' },
 }
 
-function PuffPanel({ screen, onMinimize, onControls, children }: {
-  screen: Screen; onMinimize: () => void; onControls: () => void; children: React.ReactNode
+function PuffPanel({ screen, onMinimize, onControls, mute, children }: {
+  screen: Screen; onMinimize: () => void; onControls: () => void
+  /** Shown where muting makes sense (home and the suggestion), not during a break. */
+  mute?: { muted: boolean; onClick: () => void }
+  children: React.ReactNode
 }) {
   const drag = useDragHandle()
   const win = WINDOW[screen]
   return (
-    <div className="puff-window w-72 puff-paper flex flex-col overflow-hidden isolate"
+    <div className="puff-window w-64 puff-paper flex flex-col overflow-hidden isolate"
       style={{
         maxHeight: inExtension ? 'calc(100vh - 96px)' : 'min(720px, 92vh)',
         animation: 'panelExpand 0.2s ease-out forwards',
@@ -661,7 +662,9 @@ function PuffPanel({ screen, onMinimize, onControls, children }: {
         className="flex items-center justify-between pl-3 pr-2 py-1.5 border-b-2 border-[#34405E] flex-shrink-0 select-none"
         style={{ background: win.bar, cursor: inExtension ? 'grab' : 'default', touchAction: 'none' }}>
         <span className="puff-mono text-[12px] puff-ink font-semibold">♡ {win.name}</span>
+        {/* Right to left, like a desktop window: minimise at the edge, then settings, then mute. */}
         <div className="flex items-center gap-1.5">
+          {mute && <MuteButton muted={mute.muted} onClick={mute.onClick} />}
           <button onClick={onControls} aria-label="Privacy and settings" className="puff-winbtn">
             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M2 4h12M2 8h12M2 12h12" />
@@ -975,11 +978,11 @@ export default function App() {
     if (onboarding) return <OnboardingScreen onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {}; setOnboarding(false) }} />
 
     switch (screen) {
-      case 'proactive': return <ProactiveScreen workSeconds={shownSeconds} why={nudgeWhy} onTakeBreak={startHold} onLater={declineHold} onPause={() => goTo('pause')} />
-      case 'pause':     return <PauseScreen onPause={pauseFor} onTurnOff={turnOff} onBack={() => goTo('proactive')} />
+      case 'proactive': return <ProactiveScreen workSeconds={shownSeconds} why={nudgeWhy} onTakeBreak={startHold} onLater={declineHold} />
+      case 'pause':     return <PauseScreen onPause={pauseFor} onTurnOff={turnOff} onBack={() => goTo(backFromControls.current)} />
       case 'controls':  return <ControlsScreen controls={controls} tuck={tuck} onTuck={chooseTuck} onTiming={chooseTiming} onPause={pauseFor} onResume={() => pauseFor(0)} onTurnOff={turnOff} onBack={() => goTo(backFromControls.current)} />
       case 'manual':    return <HomeScreen workState={workState} workSeconds={shownSeconds} todaySeconds={inExtension ? todaySeconds : 3 * 3600 + 40 * 60} breaksToday={inExtension ? breaksToday : 2}
-                            controls={controls} onTakeBreak={startHold} onPause={() => goTo('pause')} onResume={() => { if (!controls.enabled) enableAgain(); else pauseFor(0) }} />
+                            controls={controls} onTakeBreak={startHold} onResume={() => { if (!controls.enabled) enableAgain(); else pauseFor(0) }} />
       case 'confirm':   return <ConfirmScreen workState={workState} page={confirmPage} note={note} onNote={setNote} onConfirm={confirmHold} onBack={() => goTo(screen === 'confirm' ? 'manual' : screen)} />
       // Interviews: after a short break people pick up without help, so the card only earns its
       // place after a longer one. Under five minutes, "I'm back" goes straight to the work.
@@ -1029,7 +1032,10 @@ export default function App() {
           ? 'absolute bottom-0 right-0 flex flex-col items-end gap-2'
           : 'fixed bottom-5 right-5 flex flex-col items-end gap-2 z-50'}>
         {isExpanded && (
-          <PuffPanel screen={screen} onMinimize={() => setIsExpanded(false)} onControls={openControls}>
+          <PuffPanel screen={screen} onMinimize={() => setIsExpanded(false)} onControls={openControls}
+            mute={screen === 'manual' || screen === 'proactive'
+              ? { muted: pausedNow, onClick: () => { if (!pausedNow) goTo('pause'); else if (!controls.enabled) enableAgain(); else pauseFor(0) } }
+              : undefined}>
             {renderScreen()}
           </PuffPanel>
         )}
