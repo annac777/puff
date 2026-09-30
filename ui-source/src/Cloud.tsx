@@ -84,17 +84,21 @@ function Weather({ mood }: { mood: Mood }) {
     case 'tired':
       return (
         <>
-          <path className="pf-drop" d="M40 82 v5" stroke="#7CB8D6" strokeWidth="2" strokeLinecap="round" />
-          <path className="pf-drop" style={{ animationDelay: '.55s' }} d="M78 82 v5" stroke="#7CB8D6" strokeWidth="2" strokeLinecap="round" />
+          <ellipse className="pf-ripple pf-fb" cx="60" cy="95" rx="16" ry="2.2" fill="none" stroke="#7CB8D6" strokeWidth="1.1" />
+          {[34, 52, 70, 86].map((x, i) => (
+            <path key={x} className="pf-drop" style={{ animationDelay: `${[0, 0.45, 0.2, 0.7][i]}s` }}
+              d={`M${x} 82 v5`} stroke="#7CB8D6" strokeWidth="2" strokeLinecap="round" />
+          ))}
         </>
       )
     case 'very_tired':
       return (
         <>
-          <ellipse className="pf-ripple pf-fb" cx="60" cy="95" rx="18" ry="2.5" fill="none" stroke="#7CB8D6" strokeWidth="1.2" />
-          {[30, 48, 66, 84].map((x, i) => (
-            <path key={x} className="pf-drop-fast" style={{ animationDelay: `${[0, 0.2, 0.45, 0.3][i]}s` }}
-              d={`M${x} 82 v6`} stroke="#6FA9C8" strokeWidth="2" strokeLinecap="round" />
+          <path className="pf-flash" d="M100 6 L91 24 H98 L92 40 L108 18 H100 L106 6 Z" fill="#FAC775" />
+          <ellipse className="pf-ripple pf-fb" cx="60" cy="95" rx="20" ry="2.6" fill="none" stroke="#6FA9C8" strokeWidth="1.2" />
+          {[24, 38, 52, 66, 80, 94].map((x, i) => (
+            <path key={x} className="pf-drop-fast" style={{ animationDelay: `${[0, 0.25, 0.1, 0.4, 0.2, 0.5][i]}s` }}
+              d={`M${x} 82 l-1.5 7`} stroke="#5E97B8" strokeWidth="2.2" strokeLinecap="round" />
           ))}
         </>
       )
@@ -240,10 +244,6 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
             <Cheeks o={0.55} /><OpenEyes blink={false} />
             <path d="M54 65 Q60 72 66 65 Z" fill={INK} />
           </g>
-          <g className="pf-pop pf-fb">
-            <circle cx="22" cy="24" r="9" fill="#FFF4CC" />
-            <text x="19.6" y="29" fontSize="13" fontWeight="700" fill="#B58500">!</text>
-          </g>
         </>
       )
     case 'finished':
@@ -264,8 +264,12 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
           <Body fill={fill} /><Shine /><HappyEyes />
           <Smile d="M56 66 Q60 69 64 66" />
           <path d="M53 70 h14 v16 l-7 -5 -7 5 z" fill="#F5C842" />
+          <ellipse cx="49.5" cy="78" rx="6" ry="4.6" fill="#1A3A48" opacity=".14" />
+          <ellipse cx="73.5" cy="78" rx="6" ry="4.6" fill="#1A3A48" opacity=".14" />
           <ellipse cx="48" cy="76" rx="6" ry="5" fill={fill} />
           <ellipse cx="72" cy="76" rx="6" ry="5" fill={fill} />
+          <ellipse cx="46.5" cy="74.5" rx="2.4" ry="1.4" fill="#fff" opacity=".35" />
+          <ellipse cx="70.5" cy="74.5" rx="2.4" ry="1.4" fill="#fff" opacity=".35" />
         </g>
       )
     case 'break':
@@ -327,8 +331,8 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
             <circle cx="70" cy="57" r="5" fill="#fff" stroke={INK} strokeWidth="1.6" />
             <circle cx="50" cy="57" r="2.2" fill={INK} /><circle cx="70" cy="57" r="2.2" fill={INK} />
             <ellipse cx="60" cy="68" rx="3" ry="3.6" fill={INK} />
+            <path d="M45 47.5 Q50 44 55 47 M65 47 Q70 44 75 47.5" stroke={INK} strokeWidth="2" fill="none" strokeLinecap="round" />
           </g>
-          <path d="M50 92 q4 3 8 0 M62 92 q4 3 8 0" stroke="#B4B2A9" strokeWidth="1.6" fill="none" strokeLinecap="round" />
         </>
       )
     case 'petted':
