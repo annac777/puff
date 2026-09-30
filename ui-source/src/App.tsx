@@ -130,173 +130,116 @@ function Label({ children }: { children: React.ReactNode }) {
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────
 
-function OnboardingScreen({ onDone }: { onDone: () => void }) {
-  const [step, setStep] = useState(1)
-  const TOTAL = 3
+/** What Puff notices and never reads. Shown in onboarding and in settings, so the two cannot drift. */
+function PrivacyStickers() {
+  return (
+    <>
+      <Sticker bg="#DCEFFA" tilt={-1}>
+        <div className="px-3 pt-3 pb-2.5 space-y-1">
+          <Label>what puff notices</Label>
+          <ul className="text-[12px] puff-ink leading-relaxed">
+            <li>· how long you've been active at your computer</li>
+            <li>· how often you click, type and scroll — counts only</li>
+            <li>· when you switch tabs, save, or submit something</li>
+          </ul>
+        </div>
+      </Sticker>
+      <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={1}>
+        <div className="px-3 pt-3 pb-2.5 space-y-1">
+          <Label>what it never reads</Label>
+          <ul className="text-[12px] puff-ink leading-relaxed">
+            <li>· what you type, or what's on a page</li>
+            <li>· tab titles and links — except the one page you save for a break</li>
+          </ul>
+          <p className="puff-mono text-[10.5px] text-[#5A6480] leading-snug pt-1">everything stays on this computer. puff stays quiet on video calls, payment pages and in full screen.</p>
+        </div>
+      </Sticker>
+    </>
+  )
+}
 
-  const next = () => { if (step < TOTAL) setStep(s => s + 1); else onDone() }
-  const skip = () => onDone()
+// First run. Three short pages in the same window as everything else: who Puff is, what it can
+// and cannot see, and how often it should ask. The last page sets the break timing for real.
+const ONBOARDING_POINTS: [string, string, string][] = [
+  ['🌧', 'i get tired when you do', 'my weather shows how long you have been at it.'],
+  ['☕', 'i ask at a good moment', 'right after you save or send something. never while you type.'],
+  ['🔖', 'i hold your place', 'step away, and come back to the page you were on.'],
+]
+
+function OnboardingScreen({ minutes, onTiming, onDone, start = 1 }: {
+  minutes: number; onTiming: (m: number) => void; onDone: () => void
+  /** Which page to open on; the style guide shows each one. */
+  start?: number
+}) {
+  const [step, setStep] = useState(start)
+  const TOTAL = 3
+  const next = () => (step < TOTAL ? setStep(s => s + 1) : onDone())
+  const chip = (on: boolean) => `puff-btn h-8 text-[12px] ${on ? 'bg-[#FFD66B]' : 'bg-white font-medium'}`
 
   return (
-    <div className="flex flex-col min-h-full" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-
-      {/* ── Step content ── */}
-      <div className="flex-1 px-5 pt-6 pb-4 flex flex-col items-center gap-5" key={step}
-        style={{ animation: 'fadeSlide 0.18s ease-out' }}>
-
+    <div className="px-4 pt-3.5 pb-4 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="flex flex-col gap-3" key={step} style={{ animation: 'fadeSlide 0.18s ease-out' }}>
         {step === 1 && (
           <>
-            {/* Puff, fresh + sunshine — smaller */}
-            <div className="relative w-20 h-[64px] mt-2" style={{ animation: 'cloudFloat 2.4s ease-in-out infinite' }}>
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse 64px 50px at 58% 38%, rgba(253,230,138,0.32) 0%, transparent 72%)' }} />
-              <PuffCloud workState="fresh" screen="resume" />
+            <div className="flex items-center gap-2">
+              <div className="w-[88px] h-[74px] flex-shrink-0"><Cloud mood="welcome" /></div>
+              <div>
+                <h1 className="text-[21px] font-extrabold puff-ink leading-tight">hi, i'm puff</h1>
+                <p className="text-[12px] text-[#5A6480] mt-1 inline-block"><span className="puff-highlight">a small cloud for long work days</span></p>
+              </div>
             </div>
-
-            <div className="text-center space-y-2 px-1">
-              <h1 className="text-[22px] font-bold text-[#1A1A1A] tracking-tight leading-tight">
-                Hi, I'm Puff ✨
-              </h1>
-              <p className="text-[13.5px] text-[#7A8494] leading-relaxed">
-                {"I'm here to work with you — but I get tired too. Watch how I look to know when it's time to step away."}
-              </p>
-            </div>
-
-            {/* Feature pills */}
-            <div className="w-full space-y-1.5">
-              {[
-                { icon: '🌤', label: 'My mood = how long you\'ve been working' },
-                { icon: '☕', label: 'I nudge you when it\'s time for a real break' },
-                { icon: '📍', label: 'I save your place so stepping away feels safe' },
-              ].map(f => (
-                <div key={f.label} className="flex items-center gap-2.5 bg-white rounded-xl border border-[#E0DAD4] px-3 py-2">
-                  <span className="text-[14px]">{f.icon}</span>
-                  <span className="text-[11.5px] font-medium text-[#374151] leading-snug">{f.label}</span>
+            {ONBOARDING_POINTS.map(([icon, title, body], k) => (
+              <Sticker key={title} bg={['#FFF4CC', '#DCEFFA', '#CDEBD6'][k]} tape={['rgba(249,201,214,.85)', 'rgba(255,214,107,.9)', 'rgba(191,217,238,.9)'][k]} tilt={[-1.5, 1, -1][k]}>
+                <div className="flex items-start gap-2.5 px-3 pt-3 pb-2.5">
+                  <span className="text-[16px] leading-none mt-0.5">{icon}</span>
+                  <div>
+                    <p className="text-[13px] font-extrabold puff-ink">{title}</p>
+                    <p className="text-[11.5px] text-[#5A6480] leading-snug">{body}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </Sticker>
+            ))}
           </>
         )}
 
         {step === 2 && (
           <>
-            <div className="text-center space-y-1 px-1">
-              <h2 className="text-[17px] font-bold text-[#1A1A1A] tracking-tight">Stepping away, without losing your place</h2>
-              <p className="text-[11.5px] text-[#7A8494]">{"Ever delayed lunch because you didn't want to lose your train of thought? That's what I'm here for."}</p>
+            <div className="flex items-center gap-2">
+              <div className="w-[76px] h-[64px] flex-shrink-0"><Cloud mood="saving" /></div>
+              <h2 className="text-[16px] font-extrabold puff-ink leading-snug">what i can see, and what i never read</h2>
             </div>
-
-            {/* Flow diagram */}
-            <div className="w-full space-y-1.5">
-              {[
-                {
-                  ws: 'tired' as WorkState, sc: 'proactive' as Screen,
-                  num: '1', title: 'I notice when you need a break',
-                  desc: 'The longer you work, the more tired I look.',
-                  bg: 'bg-[#FEF9C3]', border: 'border-[#FDE68A]/60', num_c: 'bg-[#FDE68A] text-[#854D0E]',
-                },
-                {
-                  ws: 'focused' as WorkState, sc: 'scanning' as Screen,
-                  num: '2', title: 'I capture where you are',
-                  desc: 'Context and next step saved so you can fully disconnect.',
-                  bg: 'bg-[#F0F9FF]', border: 'border-[#BAE6FD]/60', num_c: 'bg-[#BAE6FD] text-[#0369A1]',
-                },
-                {
-                  ws: 'fresh' as WorkState, sc: 'resume' as Screen,
-                  num: '3', title: 'You return ready to go',
-                  desc: 'Your place is waiting. No re-explaining, no switching.',
-                  bg: 'bg-[#F0FDF4]', border: 'border-[#BBF7D0]/60', num_c: 'bg-[#BBF7D0] text-[#166534]',
-                },
-              ].map((item, i) => (
-                <div key={i} className={`flex items-center gap-2.5 ${item.bg} border ${item.border} rounded-xl px-3 py-2`}>
-                  <div className="w-9 h-7 flex-shrink-0">
-                    <PuffCloud workState={item.ws} screen={item.sc} small />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-px">
-                      <span className={`text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none ${item.num_c}`}>{item.num}</span>
-                      <p className="text-[11.5px] font-semibold text-[#1A1A1A]">{item.title}</p>
-                    </div>
-                    <p className="text-[10.5px] text-[#7A8494] leading-snug">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PrivacyStickers />
           </>
         )}
 
         {step === 3 && (
           <>
-            {/* Privacy cloud — calm, neutral */}
-            <div className="relative w-24 h-[76px]" style={{ animation: 'cloudFloat 2.8s ease-in-out infinite' }}>
-              <PuffCloud workState="fresh" screen="confirm" />
+            <div className="flex items-center gap-2">
+              <div className="w-[76px] h-[64px] flex-shrink-0"><Cloud mood="nudge" /></div>
+              <h2 className="text-[16px] font-extrabold puff-ink leading-snug">how long before i suggest a break?</h2>
             </div>
-
-            <div className="text-center space-y-1 px-1">
-              <h2 className="text-[17px] font-bold text-[#1A1A1A] tracking-tight">You stay in control</h2>
-              <p className="text-[11.5px] text-[#7A8494]">I only act when you approve. Nothing runs automatically.</p>
+            <div className="grid grid-cols-4 gap-2">
+              {TIMING_MINUTES.map(m => (
+                <button key={m} className={chip(m === minutes)} onClick={() => onTiming(m)}>{m}m</button>
+              ))}
             </div>
-
-            <div className="w-full space-y-1.5">
-              <div className="bg-white rounded-xl border border-[#E0DAD4] px-3 py-2.5 space-y-1.5">
-                <p className="text-[9px] font-bold text-[#BEC6D0] uppercase tracking-widest">What I can see</p>
-                {[
-                  "What's visible on your current screen",
-                  "How long you've been working (that's my whole vibe)",
-                  'Your page or file title',
-                ].map(t => (
-                  <div key={t} className="flex items-start gap-2">
-                    <span className="text-[#7EC8E3] font-bold text-[11px] flex-shrink-0 mt-px">✓</span>
-                    <p className="text-[11px] text-[#374151] leading-snug">{t}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-white rounded-xl border border-[#E0DAD4] px-3 py-2.5 space-y-1.5">
-                <p className="text-[9px] font-bold text-[#BEC6D0] uppercase tracking-widest">What I never do</p>
-                {[
-                  'Store or share your data externally',
-                  'Read passwords or private fields',
-                  'Run anything without your approval',
-                ].map(t => (
-                  <div key={t} className="flex items-start gap-2">
-                    <span className="text-[#F87171] font-bold text-[11px] flex-shrink-0 mt-px">✕</span>
-                    <p className="text-[11px] text-[#374151] leading-snug">{t}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p className="puff-mono text-[10.5px] text-[#5A6480] leading-snug">
+              i wait for a good moment after that, so it is a rough guide. change it any time in ≡, or mute me with ⏻ in the title bar.
+            </p>
           </>
         )}
       </div>
 
-      {/* ── Footer: dots + buttons ── */}
-      <div className="px-5 pb-5 pt-2 flex flex-col gap-3 flex-shrink-0">
-        {/* Progress dots */}
-        <div className="flex justify-center gap-1.5">
+      <div className="flex items-center gap-2 mt-1">
+        <div className="flex gap-1.5 mr-auto" aria-label={`step ${step} of ${TOTAL}`}>
           {Array.from({ length: TOTAL }, (_, i) => (
-            <button key={i} onClick={() => setStep(i + 1)}
-              className="rounded-full transition-all duration-200"
-              style={{
-                width:   i + 1 === step ? '18px' : '6px',
-                height:  '6px',
-                background: i + 1 === step ? '#7EC8E3' : '#D1D5DB',
-              }} />
+            <button key={i} onClick={() => setStep(i + 1)} aria-label={`step ${i + 1}`}
+              className="h-2.5 rounded-[3px] border-2 border-[#34405E] transition-all"
+              style={{ width: i + 1 === step ? 22 : 10, background: i + 1 === step ? '#FFD66B' : '#FFFBF4' }} />
           ))}
         </div>
-
-        <button onClick={next}
-          className="w-full h-10 bg-[#7EC8E3] hover:bg-[#5CB5D2] active:scale-[0.98] text-white font-semibold text-[13px] rounded-xl transition-all duration-150 shadow-sm">
-          {step === TOTAL ? "Let's go 🎉" : 'Next →'}
-        </button>
-
-        {step < TOTAL && (
-          <div className="flex justify-center">
-            <button onClick={skip}
-              className="text-[11.5px] text-[#BEC6D0] hover:text-[#7A8494] transition-colors">
-              Skip intro
-            </button>
-          </div>
-        )}
+        {step < TOTAL && <button onClick={onDone} className="puff-mono text-[11px] text-[#5A6480] hover:underline underline-offset-2 px-1">skip</button>}
+        <button onClick={next} className="puff-btn bg-[#FFD66B] text-[12.5px] px-4 h-9">{step === TOTAL ? "let's go" : 'next →'}</button>
       </div>
     </div>
   )
@@ -386,26 +329,7 @@ function ControlsScreen({ controls, tuck, onTuck, onTiming, onPause, onResume, o
   return (
     <div className="px-4 pt-3.5 pb-4 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
       <BackButton onClick={onBack} />
-      <Sticker bg="#DCEFFA" tilt={-1}>
-        <div className="px-3 pt-3 pb-2.5 space-y-1">
-          <Label>what puff notices</Label>
-          <ul className="text-[12px] puff-ink leading-relaxed">
-            <li>· how long you've been active at your computer</li>
-            <li>· how often you click, type and scroll — counts only</li>
-            <li>· when you switch tabs, save, or submit something</li>
-          </ul>
-        </div>
-      </Sticker>
-      <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={1}>
-        <div className="px-3 pt-3 pb-2.5 space-y-1">
-          <Label>what it never reads</Label>
-          <ul className="text-[12px] puff-ink leading-relaxed">
-            <li>· what you type, or what's on a page</li>
-            <li>· tab titles and links — except the one page you save for a break</li>
-          </ul>
-          <p className="puff-mono text-[10.5px] text-[#5A6480] leading-snug pt-1">everything stays on this computer. puff stays quiet on video calls, payment pages and in full screen.</p>
-        </div>
-      </Sticker>
+      <PrivacyStickers />
       <section className="space-y-2">
         <Label>suggest a break after about</Label>
         <div className="grid grid-cols-4 gap-2">
@@ -642,14 +566,16 @@ const WINDOW: Record<Screen, { name: string; bar: string }> = {
   controls:  { name: 'settings.cfg', bar: '#EDE6DA' },
 }
 
-function PuffPanel({ screen, onMinimize, onControls, mute, children }: {
+function PuffPanel({ screen, file, onMinimize, onControls, mute, children }: {
   screen: Screen; onMinimize: () => void; onControls: () => void
+  /** Overrides the window's file name and bar colour (the first-run readme). */
+  file?: { name: string; bar: string }
   /** Shown where muting makes sense (home and the suggestion), not during a break. */
   mute?: { muted: boolean; onClick: () => void }
   children: React.ReactNode
 }) {
   const drag = useDragHandle()
-  const win = WINDOW[screen]
+  const win = file ?? WINDOW[screen]
   return (
     <div className="puff-window w-64 puff-paper flex flex-col overflow-hidden isolate"
       style={{
@@ -973,7 +899,8 @@ export default function App() {
     : BASE_MOOD[workState]
 
   function renderScreen(): React.ReactNode {
-    if (onboarding) return <OnboardingScreen onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {}; setOnboarding(false) }} />
+    if (onboarding) return <OnboardingScreen minutes={Math.round(controls.thresholdSeconds / 60)} onTiming={chooseTiming}
+      onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {}; setOnboarding(false) }} />
 
     switch (screen) {
       case 'proactive': return <ProactiveScreen workSeconds={shownSeconds} why={nudgeWhy} onTakeBreak={startHold} onLater={declineHold} />
@@ -1031,7 +958,8 @@ export default function App() {
           : 'fixed bottom-5 right-5 flex flex-col items-end gap-2 z-50'}>
         {isExpanded && (
           <PuffPanel screen={screen} onMinimize={() => setIsExpanded(false)} onControls={openControls}
-            mute={screen === 'manual' || screen === 'proactive'
+            file={onboarding ? { name: 'readme.txt', bar: '#FFF4CC' } : undefined}
+            mute={!onboarding && (screen === 'manual' || screen === 'proactive')
               ? { muted: pausedNow, onClick: () => { if (!pausedNow) goTo('pause'); else if (!controls.enabled) enableAgain(); else pauseFor(0) } }
               : undefined}>
             {renderScreen()}
@@ -1054,5 +982,5 @@ export default function App() {
 }
 
 // The design board (showcase.html) renders these screens with fixed sample data for review and export.
-export { PuffPanel, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen }
+export { PuffPanel, OnboardingScreen, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen }
 export { PrimaryBtn, SecondaryBtn, GhostBtn, BackButton, MuteButton, Sticker, Label, PuffLauncher, WINDOW }

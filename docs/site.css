@@ -1,0 +1,75 @@
+/* Puff's public pages (GitHub Pages, served from /docs). Same retro sticker language as the panel. */
+:root {
+  --ink: #34405E; --ink-soft: #5A6480; --paper: #FFFBF4; --dot: #E8DDCB;
+  --sun: #FFD66B; --sky: #DCEFFA; --sky-bar: #BFD9EE; --blush: #FCE3EA; --cream: #FFF4CC; --mint: #CDEBD6; --lilac: #E3DCF5;
+  --bg: #EDE9E3;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #232838; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg) radial-gradient(rgba(52,64,94,.12) 1.1px, transparent 1.3px) 0 0 / 18px 18px;
+  color: var(--ink); font: 16px/1.6 "Outfit", ui-rounded, system-ui, -apple-system, sans-serif;
+}
+a { color: var(--ink); text-underline-offset: 3px; }
+code, .mono { font-family: ui-monospace, "DM Mono", Menlo, monospace; font-size: .86em; }
+.mono { color: var(--ink-soft); }
+.page { max-width: 880px; margin: 0 auto; padding: 40px 16px 72px; }
+.crumb { margin: 0 0 16px; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+
+.win {
+  background: var(--paper) radial-gradient(var(--dot) 1.1px, transparent 1.3px) 0 0 / 16px 16px;
+  border: 2.5px solid var(--ink); border-radius: 16px; box-shadow: 5px 5px 0 var(--ink); overflow: hidden;
+}
+.bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 14px; border-bottom: 2.5px solid var(--ink); background: var(--sky-bar);
+  font: 600 14px ui-monospace, Menlo, monospace;
+}
+.bar-pink { background: var(--blush); } .bar-cream { background: var(--cream); } .bar-mint { background: var(--mint); }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 16px; height: 16px; border: 2px solid var(--ink); border-radius: 4px; background: var(--paper); display: block; }
+.body { padding: 28px clamp(18px, 4vw, 40px) 32px; }
+
+.prose h1 { font-size: 30px; line-height: 1.15; margin: 0 0 4px; }
+.prose h2 { font-size: 19px; margin: 28px 0 6px; }
+.prose p, .prose li { color: var(--ink); }
+.prose ul { padding-left: 20px; }
+
+.hero { display: grid; grid-template-columns: 220px 1fr; gap: 28px; align-items: center; }
+.hero img { width: 100%; height: auto; }
+.hero h1 { font-size: clamp(40px, 7vw, 60px); line-height: 1; margin: 0; letter-spacing: -.02em; }
+.hl { background: linear-gradient(transparent 58%, #FFE08A 58%); padding: 0 3px; }
+.lede { font-size: 19px; color: var(--ink-soft); margin: 12px 0 20px; }
+.btn {
+  display: inline-block; padding: 10px 18px; border: 2.5px solid var(--ink); border-radius: 12px; box-shadow: 3px 3px 0 var(--ink);
+  background: var(--sun); color: var(--ink); font-weight: 700; text-decoration: none; transition: transform .08s, box-shadow .08s;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ink); }
+.btn.ghost { background: #fff; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.note { font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: var(--ink-soft); margin-top: 10px; }
+
+.stickers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 36px 0; }
+.sticker { position: relative; border: 2.5px solid var(--ink); border-radius: 12px; padding: 22px 18px 16px; }
+.sticker::before { content: ""; position: absolute; top: -10px; left: 50%; width: 44px; height: 14px; margin-left: -22px; background: rgba(249,201,214,.9); }
+.sticker h3 { margin: 0 0 4px; font-size: 18px; }
+.sticker p { margin: 0; color: var(--ink-soft); font-size: 15px; }
+.s1 { background: var(--cream); transform: rotate(-1.2deg); } .s2 { background: var(--sky); transform: rotate(.8deg); } .s3 { background: var(--mint); transform: rotate(-.6deg); }
+
+.shots { display: grid; gap: 22px; margin-top: 8px; }
+.shots figure { margin: 0; }
+.shots img { width: 100%; height: auto; display: block; border: 2.5px solid var(--ink); border-radius: 12px; box-shadow: 4px 4px 0 var(--ink); }
+.shots figcaption { font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: var(--ink-soft); margin-top: 8px; }
+
+footer { margin-top: 40px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: var(--ink-soft); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) footer, :root:not([data-theme="light"]) .crumb a { color: #E7EAF2; } }
+
+@media (max-width: 640px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero img { width: 160px; }
+  .stickers { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Puff for Chrome</title>
+  <meta name="description" content="A small cloud that waits for a good moment to suggest a break, and holds your place while you are away." />
+  <link rel="icon" href="puff-icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="win">
+      <header class="bar"><span>♡ puff.exe</span><span class="dots"><i style="border-radius:50%;background:var(--lilac)"></i><i></i><i></i></span></header>
+      <div class="body">
+        <div class="hero">
+          <img src="img/puff.svg" alt="Puff, a small blue cloud with a sun" width="240" height="200" />
+          <div>
+            <h1>Puff</h1>
+            <p class="lede">A small cloud for long work days. It waits for <span class="hl">a good moment</span> to suggest a break, and holds your place while you are away.</p>
+            <div class="row">
+              <a class="btn" id="install" href="#try">Add to Chrome</a>
+              <a class="btn ghost" href="privacy.html">Privacy</a>
+            </div>
+            <p class="note">free · no account · nothing leaves your computer</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="stickers">
+      <div class="sticker s1"><h3>🌧 Gets tired when you do</h3><p>Puff's weather shows how long you have been at it: sun, then rain, then a storm.</p></div>
+      <div class="sticker s2"><h3>☕ Asks at a good moment</h3><p>Right after you save or send something, never while you type. Once, and easy to wave off.</p></div>
+      <div class="sticker s3"><h3>🔖 Holds your place</h3><p>Step away, and come back to the page you were on, with the note you left yourself.</p></div>
+    </div>
+
+    <section class="win">
+      <header class="bar bar-cream"><span>♡ how-it-works.png</span><span class="dots"><i></i><i></i></span></header>
+      <div class="body">
+        <div class="shots">
+          <figure><img src="img/2-open.jpg" alt="Puff's window open over a document, showing 43 minutes of focus" loading="lazy" width="960" height="600" /><figcaption>open Puff any time: how long you have worked, today so far, breaks taken</figcaption></figure>
+          <figure><img src="img/3-suggestion.jpg" alt="A small dialog asking if it is a good moment for a break" loading="lazy" width="960" height="600" /><figcaption>after you finish something, Puff asks once</figcaption></figure>
+          <figure><img src="img/4-on-a-break.jpg" alt="Puff sipping tea while holding the page you were on" loading="lazy" width="960" height="600" /><figcaption>while you are away, your place is held</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="win" style="margin-top:32px">
+      <header class="bar bar-pink"><span>♡ privacy.txt</span><span class="dots"><i></i><i></i></span></header>
+      <div class="body prose">
+        <h2 style="margin-top:0">What Puff sees</h2>
+        <p>How long you are active, and how often you click, type and scroll (counts only). That you saved or submitted something. Never what you type, never what is on a page, and never a tab's title or address, except the one page you choose to save for a break. It all stays in your browser and nothing is sent anywhere. <a href="privacy.html">Read the privacy policy</a>.</p>
+      </div>
+    </section>
+
+    <section class="win" id="try" style="margin-top:32px">
+      <header class="bar bar-mint"><span>♡ install.txt</span><span class="dots"><i></i><i></i></span></header>
+      <div class="body prose">
+        <h2 style="margin-top:0">Get Puff</h2>
+        <p>Puff is on its way to the Chrome Web Store. Until then, you can install it by hand:</p>
+        <ol>
+          <li>Download <a href="https://github.com/annac777/puff/archive/refs/heads/main.zip">the code</a> and unzip it.</li>
+          <li>Open <code>chrome://extensions</code> and turn on <em>Developer mode</em>.</li>
+          <li>Click <em>Load unpacked</em> and choose the <code>extension</code> folder.</li>
+        </ol>
+      </div>
+    </section>
+
+    <footer>made by Anna Chen and Hyeji Han · <a href="privacy.html">privacy</a> · <a href="https://github.com/annac777/puff">github</a></footer>
+  </main>
+</body>
+</html>

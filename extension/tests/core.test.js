@@ -223,3 +223,10 @@ test("a normal invitation says which kind of moment it was",()=>{
   assert.equal(core.evaluate(ready({lastActivityAt:99000,lastBoundaryAt:99000}),100000).nudgeKind,"finished");
   assert.equal(core.evaluate(ready(),100000).nudgeKind,"pause");
 });
+
+test("the saved page is forgotten once the break is over",()=>{
+  let s=core.applyResponse(ready({currentTabTitle:"Doc",currentTabUrl:"https://example.com/doc"}),"take_break",100000,{note:"next"});
+  assert.equal(s.checkpoint.title,"Doc");
+  s=core.applyResponse(core.applyResponse(s,"resume",200000),"continue",201000);
+  assert.equal(s.checkpoint,null);
+});

@@ -6,7 +6,7 @@ import { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { Cloud, type Mood, type Season } from './Cloud'
-import { PuffPanel, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen, PuffLauncher } from './App'
+import { PuffPanel, OnboardingScreen, HomeScreen, ProactiveScreen, ConfirmScreen, OnBreakScreen, ResumeScreen, PauseScreen, ControlsScreen, PuffLauncher } from './App'
 
 const noop = () => {}
 const controls = { enabled: true, busyUntil: 0, thresholdSeconds: 1800 }
@@ -19,6 +19,7 @@ function Piece({ name, children, pad = 16 }: { name: string; children: React.Rea
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 const SCREENS: [string, React.ReactNode][] = [
+  ...[1, 2, 3].map(n => [`screen-00-readme-${n}`, <PuffPanel screen="manual" file={{ name: 'readme.txt', bar: '#FFF4CC' }} onMinimize={noop} onControls={noop}><OnboardingScreen start={n} minutes={30} onTiming={noop} onDone={noop} /></PuffPanel>] as [string, React.ReactNode]),
   ['screen-01-home', <PuffPanel screen="manual" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onResume={noop} /></PuffPanel>],
   ['screen-02-home-paused', <PuffPanel screen="manual" onMinimize={noop} onControls={noop} mute={{ muted: true, onClick: noop }}><HomeScreen workState="focused" workSeconds={1500} todaySeconds={13200} breaksToday={2} controls={paused} onTakeBreak={noop} onResume={noop} /></PuffPanel>],
   ['screen-03-suggestion-finished', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop} mute={{ muted: false, onClick: noop }}><ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} /></PuffPanel>],

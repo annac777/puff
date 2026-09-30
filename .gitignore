@@ -36,3 +36,4 @@ ui-source/.figma/
 
 # Design board build output
 ui-source/showcase-dist/
+store/*.zip

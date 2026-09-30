@@ -155,7 +155,7 @@
       next.checkpoint={title:state.currentTabTitle,url:state.currentTabUrl,tabId:state.currentTabId,note,savedAt:now,workedSeconds:Math.floor(state.activeSeconds||0)};
       next.mode="on_break";next.breakStartedAt=now;next.breaksToday=(state.breaksToday||0)+1;
     }else if(action==="resume"){next.mode="resume";}
-    else if(action==="continue"){next.mode="quiet";next.activeSeconds=0;next.sessionSeconds=0;next.sessionStartedAt=now;next.sessionInvited=false;next.laterCount=0;next.cooldownUntil=0;next.windows=[];next.rhythm=rhythmOf([]);}
+    else if(action==="continue"){next.mode="quiet";next.checkpoint=null;next.activeSeconds=0;next.sessionSeconds=0;next.sessionStartedAt=now;next.sessionInvited=false;next.laterCount=0;next.cooldownUntil=0;next.windows=[];next.rhythm=rhythmOf([]);}
     return next;
   }
   /** Pause invitations until a moment in time; 0 lifts the pause. */
