@@ -1,8 +1,9 @@
 // v2
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { Cloud, CloudMark, type Mood } from './Cloud'
 import { inExtension, activityState, currentPage, saveHold, restoreTab, resetActivity, declineBreak,
   pauseUntil, setPuffEnabled, setBreakTiming, TIMING_MINUTES, endOfToday, clockTime,
-  sourceLabel, pageLabel, formatDuration, formatAway, workStateFor, useDragHandle, type Hold } from './puff-bridge'
+  heroTime, sourceLabel, pageLabel, formatAway, workStateFor, useDragHandle, type Hold } from './puff-bridge'
 
 type Screen    = 'proactive' | 'manual' | 'confirm' | 'on_break' | 'resume' | 'pause' | 'controls'
 type BreakMode = 'agent' | 'save_only' | null
@@ -29,298 +30,31 @@ const DEMO_SCREENS: { id: Screen; label: string }[] = [
 /** Settings the panel reflects back to the person. */
 type Controls = { enabled: boolean; busyUntil: number; thresholdSeconds: number }
 
-/** Pill colour follows the measured work state, so time and colour can never disagree. */
-const PILL: Record<WorkState, { bg: string; border: string; text: string; dot: string }> = {
-  fresh:     { bg: '#F0F9FF', border: '#BAE6FD', text: '#0369A1', dot: '#7EC8E3' },
-  focused:   { bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', dot: '#34D399' },
-  tired:     { bg: '#FEF9C3', border: '#FDE68A', text: '#854D0E', dot: '#FBBF24' },
-  exhausted: { bg: '#FFEDD5', border: '#FED7AA', text: '#9A3412', dot: '#FB923C' },
-  critical:  { bg: '#FEE2E2', border: '#FECACA', text: '#991B1B', dot: '#F87171' },
-}
 
-// Per work-state cloud appearance
-const CLOUD_COLOR: Record<WorkState, string> = {
-  fresh:     '#7EC8E3',
-  focused:   '#6AB5D0',
-  tired:     '#8AADBF',
-  exhausted: '#7595A7',
-  critical:  '#5F7B8C',
-}
-const SHADOW_COLOR: Record<WorkState, string> = {
-  fresh:     '#7EC8E3',
-  focused:   '#6AB5D0',
-  tired:     '#8AADBF',
-  exhausted: '#7595A7',
-  critical:  '#5F7B8C',
-}
-const FLOAT_DUR: Record<WorkState, string> = {
-  fresh:     '2.2s',
-  focused:   '2.6s',
-  tired:     '3.6s',
-  exhausted: '5s',
-  critical:  '7s',
-}
-const FLOAT_LIFT: Record<WorkState, string> = {
-  fresh:     '-8px',
-  focused:   '-6px',
-  tired:     '-4px',
-  exhausted: '-2px',
-  critical:  '-1px',
-}
 
-// ─── Cloud SVG ────────────────────────────────────────────────────────────────
+// ─── Cloud ────────────────────────────────────────────────────────────────────
+// The character lives in Cloud.tsx. These map the prototype's screens and work states onto it.
 
-function PuffCloud({
-  workState = 'fresh',
-  screen,
-  small = false,
-}: {
-  workState?: WorkState
-  screen: Screen
-  small?: boolean
+const BASE_MOOD: Record<WorkState, Mood> = {
+  fresh: 'idle', focused: 'focused', tired: 'tired', exhausted: 'very_tired', critical: 'sleepy',
+}
+function moodFor(workState: WorkState, screen: Screen): Mood {
+  switch (screen) {
+    case 'proactive': return 'nudge'
+    case 'confirm':   return 'saving'
+    case 'on_break':  return 'break'
+    case 'resume':    return 'welcome'
+    case 'pause':     return 'paused'
+    default:          return BASE_MOOD[workState]
+  }
+}
+function PuffCloud({ workState = 'fresh', screen, mood, afterRain }: {
+  workState?: WorkState; screen: Screen; small?: boolean; mood?: Mood; afterRain?: boolean
 }) {
-  const uid = screen.replace(/_/g, '') + (small ? 's' : 'f') + workState
-
-  const fill   = screen === 'resume' ? '#7EC8E3' : CLOUD_COLOR[workState]
-  const shadow = screen === 'resume' ? '#7EC8E3' : SHADOW_COLOR[workState]
-
-  const isSleeping = screen === 'on_break'
-  const isScanning = false
-  const isResume   = screen === 'resume'
-  const isProactive = screen === 'proactive'
-
-  // Cloud body gets slightly heavier / puffier as tired
-  const sag = { fresh: 0, focused: 0.5, tired: 1.2, exhausted: 2, critical: 2.8 }[workState]
-
-  return (
-    <svg viewBox="0 0 100 80" className="w-full h-full" style={{ overflow: 'visible' }}>
-      <defs>
-        <filter id={`sh-${uid}`} x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy={small ? 3 : 4} stdDeviation={small ? 6 : 4}
-            floodColor={shadow} floodOpacity={small ? 0.38 : 0.26} />
-        </filter>
-        {small && (
-          <filter id={`leg-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="white" floodOpacity="0.95" />
-          </filter>
-        )}
-        {/* eyelid clip zones */}
-        <clipPath id={`lid-l-${uid}`}>
-          <rect x="34" y={42 + (workState === 'tired' ? 0 : workState === 'exhausted' ? 2.2 : workState === 'critical' ? 3.6 : -10)} width="13" height="12" />
-        </clipPath>
-        <clipPath id={`lid-r-${uid}`}>
-          <rect x="54" y={42 + (workState === 'tired' ? 0 : workState === 'exhausted' ? 2.2 : workState === 'critical' ? 3.6 : -10)} width="13" height="12" />
-        </clipPath>
-      </defs>
-
-      {/* ── ATMOSPHERE per screen ── */}
-
-      {/* proactive / resume: sun */}
-      {(isProactive || isResume) && (
-        <g style={{ animation: 'sunReveal 0.4s ease-out forwards' }} opacity="0">
-          {[
-            [isResume ? 79 : 83, isResume ? 1 : 3,   isResume ? 79 : 83, isResume ? -6 : -3],
-            [isResume ? 88 : 91, isResume ? 4 : 6,   isResume ? 92 : 95, isResume ? -2 : 1],
-            [isResume ? 93 : 96, isResume ? 13 : 14, isResume ? 100 : 102, isResume ? 10 : 12],
-            [isResume ? 91 : 91, isResume ? 23 : 22, isResume ? 97 : 96,  isResume ? 27 : 27],
-            [isResume ? 70 : 74, isResume ? 4 : 5,   isResume ? 67 : 71, isResume ? -2 : -1],
-          ].map(([x1,y1,x2,y2], i) => (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-              stroke="#FDE68A" strokeWidth={isResume ? 2.2 : 2} strokeLinecap="round"
-              opacity={isResume ? [0.9,0.84,0.80,0.65,0.65][i] : [0.8,0.72,0.65,0.5,0.52][i]} />
-          ))}
-          <circle cx={isResume ? 79 : 83} cy={isResume ? 12 : 13} r={isResume ? 13 : 10}
-            fill="#FDE68A" opacity={isResume ? 0.9 : 0.85} />
-          {isResume && <ellipse cx="50" cy="75" rx="36" ry="6" fill="#FDE68A" opacity="0.2" />}
-        </g>
-      )}
-
-      {/* scanning: gathering wisps */}
-      {isScanning && !small && (
-        <>
-          <ellipse cx="13" cy="28" rx="10" ry="2.5" fill="#BAE6FD" opacity="0.5"
-            style={{ animation: 'gatherL 1.4s ease-in-out infinite 0s', transformBox: 'fill-box', transformOrigin: 'center' }} />
-          <ellipse cx="87" cy="34" rx="9" ry="2.5" fill="#BAE6FD" opacity="0.42"
-            style={{ animation: 'gatherR 1.4s ease-in-out infinite 0.35s', transformBox: 'fill-box', transformOrigin: 'center' }} />
-          <ellipse cx="11" cy="55" rx="10" ry="2" fill="#BAE6FD" opacity="0.32"
-            style={{ animation: 'gatherL 1.4s ease-in-out infinite 0.7s', transformBox: 'fill-box', transformOrigin: 'center' }} />
-        </>
-      )}
-
-      {/* on_break: floating wind wisps */}
-      {isSleeping && !small && (
-        <>
-          <ellipse cx="0" cy="63" rx="11" ry="2.5" fill="#BAE6FD" opacity="0.48"
-            style={{ animation: 'windDrift 2.4s linear infinite 0s' }} />
-          <ellipse cx="0" cy="69" rx="9"  ry="2"   fill="#BAE6FD" opacity="0.34"
-            style={{ animation: 'windDrift 2.4s linear infinite 0.8s' }} />
-          <ellipse cx="0" cy="56" rx="8"  ry="2"   fill="#BAE6FD" opacity="0.26"
-            style={{ animation: 'windDrift 2.4s linear infinite 1.6s' }} />
-        </>
-      )}
-
-      {/* ── WORK-STATE ATMOSPHERE ── */}
-
-      {/* tired+: sweat drop */}
-      {(workState === 'tired' || workState === 'exhausted' || workState === 'critical') && !isSleeping && !isResume && (
-        <g style={{ animation: 'sweatDrop 2.8s ease-in-out infinite' }}>
-          <ellipse cx="79" cy="26" rx="2.2" ry="3.2" fill="#BAE6FD" opacity="0.7" />
-          <ellipse cx="79" cy="23.4" rx="2.2" ry="1.4" fill="#BAE6FD" opacity="0.7" />
-        </g>
-      )}
-
-      {/* exhausted+: two raindrops */}
-      {(workState === 'exhausted' || workState === 'critical') && !isSleeping && !isResume && (
-        <g style={{ animation: 'rainFall 1.8s linear infinite' }}>
-          <ellipse cx="32" cy="76" rx="1.4" ry="2.8" fill="#7EC8E3" opacity="0.5" />
-          <ellipse cx="50" cy="79" rx="1.4" ry="2.8" fill="#7EC8E3" opacity="0.45"
-            style={{ animationDelay: '0.6s' }} />
-        </g>
-      )}
-
-      {/* critical: third drop + dark storm wisp */}
-      {workState === 'critical' && !isSleeping && !isResume && (
-        <>
-          <g style={{ animation: 'rainFall 1.8s linear infinite', animationDelay: '1.1s' }}>
-            <ellipse cx="68" cy="76" rx="1.4" ry="2.8" fill="#7EC8E3" opacity="0.4" />
-          </g>
-          <ellipse cx="22" cy="24" rx="14" ry="3.5" fill="#4A6A7A" opacity="0.22"
-            style={{ animation: 'gatherL 2s ease-in-out infinite', transformBox: 'fill-box', transformOrigin: 'center' }} />
-          <ellipse cx="80" cy="29" rx="11" ry="3" fill="#4A6A7A" opacity="0.18"
-            style={{ animation: 'gatherR 2s ease-in-out infinite 0.7s', transformBox: 'fill-box', transformOrigin: 'center' }} />
-        </>
-      )}
-
-      {/* ── CLOUD BODY ── */}
-      {small && (
-        <g filter={`url(#leg-${uid})`}>
-          <g fill={fill}>
-            <ellipse cx="50" cy={57 + sag} rx="37" ry={19 + sag * 0.3} />
-            <circle cx="25" cy={42 + sag * 0.4} r={16 + sag * 0.2} />
-            <circle cx="50" cy={32 + sag * 0.3} r={20 + sag * 0.2} />
-            <circle cx="73" cy={42 + sag * 0.4} r={15 + sag * 0.2} />
-          </g>
-        </g>
-      )}
-      <g filter={`url(#sh-${uid})`}>
-        <g fill={fill}>
-          <ellipse cx="50" cy={57 + sag} rx="37" ry={19 + sag * 0.3} />
-          <circle cx="25" cy={42 + sag * 0.4} r={16 + sag * 0.2} />
-          <circle cx="50" cy={32 + sag * 0.3} r={20 + sag * 0.2} />
-          <circle cx="73" cy={42 + sag * 0.4} r={15 + sag * 0.2} />
-        </g>
-      </g>
-
-      {/* Ground shadow — gets heavier as tired */}
-      <ellipse cx="50" cy={72 + sag}
-        rx={32 + sag * 2} ry={4.5 + sag * 0.5}
-        fill="rgba(0,0,0,0.05)" />
-
-      {/* ── EYES ── */}
-
-      {isSleeping ? (
-        /* Sleeping arcs */
-        <g>
-          <path d="M 35.5 42 Q 40 37.5 44.5 42" stroke="#1A4658" strokeWidth="2.3" fill="none" strokeLinecap="round" />
-          <path d="M 55.5 42 Q 60 37.5 64.5 42" stroke="#1A4658" strokeWidth="2.3" fill="none" strokeLinecap="round" />
-          <ellipse cx="26" cy="51" rx="6" ry="3.5" fill="#FCA5A5" opacity="0.22" />
-          <ellipse cx="74" cy="51" rx="6" ry="3.5" fill="#FCA5A5" opacity="0.22" />
-        </g>
-      ) : isScanning ? (
-        /* Looking up — reading */
-        <g>
-          <ellipse cx="40" cy="40" rx="4.5" ry="4.5" fill="#1A4658" />
-          <ellipse cx="60" cy="40" rx="4.5" ry="4.5" fill="#1A4658" />
-          <ellipse cx="39" cy="38.2" rx="2" ry="2" fill="white" opacity="0.75" />
-          <ellipse cx="59" cy="38.2" rx="2" ry="2" fill="white" opacity="0.75" />
-          <circle cx="40" cy="54" r="1.5" fill={fill} opacity="0.6"
-            style={{ animation: 'dotPulse 0.9s ease-in-out infinite 0s' }} />
-          <circle cx="50" cy="56" r="1.5" fill={fill} opacity="0.5"
-            style={{ animation: 'dotPulse 0.9s ease-in-out infinite 0.3s' }} />
-          <circle cx="60" cy="54" r="1.5" fill={fill} opacity="0.6"
-            style={{ animation: 'dotPulse 0.9s ease-in-out infinite 0.6s' }} />
-        </g>
-      ) : isResume ? (
-        /* Bright + happy after break */
-        <g>
-          <ellipse cx="40" cy="42" rx="5" ry="5" fill="#1A4658" />
-          <ellipse cx="60" cy="42" rx="5" ry="5" fill="#1A4658" />
-          <ellipse cx="38.2" cy="40.2" rx="2.2" ry="2.2" fill="white" opacity="0.88" />
-          <ellipse cx="58.2" cy="40.2" rx="2.2" ry="2.2" fill="white" opacity="0.88" />
-          <path d="M 42 52 Q 50 58 58 52" stroke="#1A4658" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.45" />
-        </g>
-      ) : workState === 'fresh' ? (
-        <g>
-          <ellipse cx="40" cy="42" rx="4.5" ry="4.5" fill="#1A4658" />
-          <ellipse cx="60" cy="42" rx="4.5" ry="4.5" fill="#1A4658" />
-          <ellipse cx="38.5" cy="40.5" rx="1.9" ry="1.9" fill="white" opacity="0.65" />
-          <ellipse cx="58.5" cy="40.5" rx="1.9" ry="1.9" fill="white" opacity="0.65" />
-          <path d="M 43 52 Q 50 57 57 52" stroke="#1A4658" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.4" />
-        </g>
-      ) : workState === 'focused' ? (
-        /* Slightly squinted — concentrated */
-        <g>
-          <ellipse cx="40" cy="42.5" rx="4.5" ry="3.8" fill="#1A4658" />
-          <ellipse cx="60" cy="42.5" rx="4.5" ry="3.8" fill="#1A4658" />
-          <ellipse cx="38.5" cy="41" rx="1.6" ry="1.6" fill="white" opacity="0.55" />
-          <ellipse cx="58.5" cy="41" rx="1.6" ry="1.6" fill="white" opacity="0.55" />
-        </g>
-      ) : workState === 'tired' ? (
-        /* Half-closed eyes + faint dark circles */
-        <g>
-          {/* Dark circles */}
-          <ellipse cx="40" cy="49" rx="5.5" ry="2" fill="#2D5568" opacity="0.14" />
-          <ellipse cx="60" cy="49" rx="5.5" ry="2" fill="#2D5568" opacity="0.14" />
-          {/* Eye bottom-half only (clipped) */}
-          <circle cx="40" cy="42" r="4.5" fill="#1A4658" clipPath={`url(#lid-l-${uid})`} />
-          <circle cx="60" cy="42" r="4.5" fill="#1A4658" clipPath={`url(#lid-r-${uid})`} />
-          {/* Eyelid lines */}
-          <line x1="35.5" y1="42" x2="44.5" y2="42" stroke="#1A4658" strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="55.5" y1="42" x2="64.5" y2="42" stroke="#1A4658" strokeWidth="1.6" strokeLinecap="round" />
-          {/* Small frown */}
-          <path d="M 43 54 Q 50 51 57 54" stroke="#1A4658" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.32" />
-        </g>
-      ) : workState === 'exhausted' ? (
-        /* 3/4 closed eyes + visible dark circles */
-        <g>
-          <ellipse cx="40" cy="50" rx="6" ry="2.5" fill="#2D5568" opacity="0.25" />
-          <ellipse cx="60" cy="50" rx="6" ry="2.5" fill="#2D5568" opacity="0.25" />
-          <circle cx="40" cy="42" r="4.5" fill="#1A4658" clipPath={`url(#lid-l-${uid})`} />
-          <circle cx="60" cy="42" r="4.5" fill="#1A4658" clipPath={`url(#lid-r-${uid})`} />
-          <line x1="35.5" y1="44.2" x2="44.5" y2="44.2" stroke="#1A4658" strokeWidth="1.8" strokeLinecap="round" />
-          <line x1="55.5" y1="44.2" x2="64.5" y2="44.2" stroke="#1A4658" strokeWidth="1.8" strokeLinecap="round" />
-          {/* Clear frown */}
-          <path d="M 43 54.5 Q 50 50.5 57 54.5" stroke="#1A4658" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.42" />
-        </g>
-      ) : (
-        /* critical — slit eyes + prominent dark circles + grimace */
-        <g>
-          <ellipse cx="40" cy="50.5" rx="7" ry="3" fill="#2D5568" opacity="0.38" />
-          <ellipse cx="60" cy="50.5" rx="7" ry="3" fill="#2D5568" opacity="0.38" />
-          <circle cx="40" cy="42" r="4.5" fill="#1A4658" clipPath={`url(#lid-l-${uid})`} />
-          <circle cx="60" cy="42" r="4.5" fill="#1A4658" clipPath={`url(#lid-r-${uid})`} />
-          <line x1="35.5" y1="45.6" x2="44.5" y2="45.6" stroke="#1A4658" strokeWidth="2" strokeLinecap="round" />
-          <line x1="55.5" y1="45.6" x2="64.5" y2="45.6" stroke="#1A4658" strokeWidth="2" strokeLinecap="round" />
-          {/* Grimace */}
-          <path d="M 42 55 Q 45 52 50 54 Q 55 56 58 53"
-            stroke="#1A4658" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.48" />
-        </g>
-      )}
-    </svg>
-  )
+  return <Cloud mood={mood ?? moodFor(workState, screen)} afterRain={afterRain} />
 }
-
 function MiniCloud() {
-  return (
-    <svg width="18" height="14" viewBox="0 0 20 16" fill="none">
-      <g fill="#7EC8E3">
-        <ellipse cx="10" cy="11" rx="8" ry="4.5" />
-        <circle cx="5.5" cy="8.5" r="4" />
-        <circle cx="10" cy="6" r="5" />
-        <circle cx="14.5" cy="8.5" r="3.5" />
-      </g>
-    </svg>
-  )
+  return <CloudMark />
 }
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -539,25 +273,31 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
 // Research round one: people ignore reminders that arrive mid-focus and resent ones that nag, so
-// the suggestion is a small card that is easy to wave off. No escalation, no guilt at long stretches.
-function ProactiveScreen({ workState, workDuration, onTakeBreak, onLater, onPause }: {
-  workState: WorkState; workDuration: string; onTakeBreak: () => void; onLater: () => void; onPause: () => void
+// the suggestion is a small card that is easy to wave off, and it says why it chose this moment.
+function ProactiveScreen({ workSeconds, finished, onTakeBreak, onLater, onPause }: {
+  workSeconds: number; finished: boolean; onTakeBreak: () => void; onLater: () => void; onPause: () => void
 }) {
   return (
-    <div className="px-4 py-4 flex flex-col gap-3.5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+    <div className="px-4 pt-3.5 pb-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
       <div className="flex items-center gap-3">
-        <div className="w-14 h-11 flex-shrink-0" style={{ animation: `cloudFloat ${FLOAT_DUR[workState]} ease-in-out infinite` }}>
-          <PuffCloud workState={workState} screen="proactive" small />
+        <div className="w-[72px] h-[60px] flex-shrink-0">
+          <Cloud mood={finished ? 'finished' : 'nudge'} />
         </div>
-        <div className="min-w-0 space-y-0.5">
-          <h2 className="text-[15.5px] font-semibold text-[#1A1A1A] tracking-tight leading-snug">Good moment for a break?</h2>
-          <p className="text-[12px] text-[#7A8494] leading-snug">You've been focused for {workDuration}.</p>
+        <div className="min-w-0">
+          <p className="text-[24px] font-semibold text-[#1A1A1A] leading-none tabular-nums tracking-tight">{heroTime(workSeconds)}</p>
+          <p className="text-[11.5px] text-[#7A8494] mt-1.5 leading-snug">
+            {finished ? 'You just finished something' : 'focused this stretch'}
+          </p>
         </div>
       </div>
-      <PrimaryBtn onClick={onTakeBreak}>Take a break</PrimaryBtn>
-      <div className="grid grid-cols-2 gap-2">
-        <SecondaryBtn onClick={onLater}>Later</SecondaryBtn>
-        <SecondaryBtn onClick={onPause}>Pause</SecondaryBtn>
+      <p className="text-[14px] font-semibold text-[#1A1A1A] mt-3">Good moment for a break?</p>
+      <div className="flex items-center gap-1 mt-2.5">
+        <button onClick={onTakeBreak}
+          className="flex-1 h-9 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] hover:bg-[#E0F2FE] text-[#0369A1] text-[12.5px] font-semibold transition-colors">
+          Take a break
+        </button>
+        <button onClick={onLater} className="px-3 h-9 rounded-xl text-[12.5px] font-medium text-[#7A8494] hover:text-[#374151] hover:bg-[#EDE7E0] transition-colors">Later</button>
+        <button onClick={onPause} className="px-3 h-9 rounded-xl text-[12.5px] font-medium text-[#7A8494] hover:text-[#374151] hover:bg-[#EDE7E0] transition-colors">Pause</button>
       </div>
     </div>
   )
@@ -571,6 +311,7 @@ function PauseScreen({ onPause, onTurnOff, onBack }: {
   const option = 'w-full text-left px-3.5 py-3 rounded-xl bg-white border border-[#E0DAD4] hover:border-[#7EC8E3] hover:bg-[#F5FBFE] transition-colors'
   return (
     <div className="px-4 py-4 flex flex-col gap-3" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="w-[84px] h-[70px] self-center"><Cloud mood="paused" /></div>
       <div className="space-y-0.5">
         <h2 className="text-[15.5px] font-semibold text-[#1A1A1A] tracking-tight">Pause Puff</h2>
         <p className="text-[12px] text-[#7A8494] leading-snug">For meetings, deadlines, or when you just want to keep going.</p>
@@ -653,33 +394,59 @@ function ControlsScreen({ controls, onTiming, onPause, onResume, onTurnOff, onBa
   )
 }
 
-function ManualScreen({ workState, workDuration, onHold, onDismiss }: {
-  workState: WorkState; workDuration: string; onHold: () => void; onDismiss: () => void
+// Home: how long you have been at it is the headline. Taking a break is there, but small — the
+// suggestion comes at a good moment on its own. Modelled on the glanceable status of menu-bar
+// break tools and Forest's single big number.
+function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, controls, onTakeBreak, onPause, onResume }: {
+  workState: WorkState; workSeconds: number; todaySeconds: number; breaksToday: number
+  controls: Controls; onTakeBreak: () => void; onPause: () => void; onResume: () => void
 }) {
+  const [petted, setPetted] = useState(false)
+  const paused = !controls.enabled || controls.busyUntil > Date.now()
+  const mood: Mood = petted ? 'petted' : paused ? 'paused' : BASE_MOOD[workState]
+  const tile = 'rounded-xl bg-white border border-[#EAE5DF] px-3 py-2'
   return (
-    <div className="px-4 py-5 flex flex-col items-center gap-5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="relative w-28 h-[88px]"
-        style={{ animation: `cloudFloat ${FLOAT_DUR[workState]} ease-in-out infinite` }}>
-        <PuffCloud workState={workState} screen="manual" />
-      </div>
-      <div className="text-center space-y-1.5 px-1">
-        <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-1 border"
-          style={{ background: PILL[workState].bg, borderColor: PILL[workState].border }}>
-          <div className="w-1.5 h-1.5 rounded-full"
-            style={{ background: PILL[workState].dot,
-              animation: workState === 'exhausted' || workState === 'critical' ? 'glowPulse 1.2s ease-in-out infinite' : 'none' }} />
-          <span className="text-[11px] font-bold" style={{ color: PILL[workState].text }}>Working for {workDuration}</span>
+    <div className="px-5 pt-3 pb-4 flex flex-col" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="flex flex-col items-center">
+        <div className="w-[120px] h-[100px]" onMouseEnter={() => setPetted(true)} onMouseLeave={() => setPetted(false)}>
+          <Cloud mood={mood} />
         </div>
-        <h2 className="text-[18px] font-semibold text-[#1A1A1A] tracking-tight leading-snug">
-          Taking a break?
-        </h2>
-        <p className="text-[12.5px] text-[#7A8494] leading-relaxed">
-          I'll remember where you were, so coming back is easy.
-        </p>
+        <p className="text-[36px] font-semibold text-[#1A1A1A] leading-none tabular-nums tracking-tight mt-1">{heroTime(workSeconds)}</p>
+        <p className="text-[12px] text-[#7A8494] mt-2">{workSeconds < 60 ? 'Just getting started' : 'focused this stretch'}</p>
       </div>
-      <div className="w-full flex flex-col gap-2">
-        <PrimaryBtn onClick={onHold}>Take a break</PrimaryBtn>
-        <SecondaryBtn onClick={onDismiss}>Not now</SecondaryBtn>
+
+      {paused ? (
+        <div className="mt-3.5 flex items-center justify-between rounded-xl bg-[#FEF9C3] border border-[#FDE68A] px-3 py-2">
+          <span className="text-[12px] text-[#854D0E]">
+            {controls.enabled ? `Paused until ${clockTime(controls.busyUntil)}` : 'Puff is off'}
+          </span>
+          <button onClick={onResume} className="text-[12px] font-semibold text-[#854D0E] hover:underline underline-offset-2">Resume</button>
+        </div>
+      ) : (
+        <p className="mt-3.5 text-center text-[11.5px] text-[#9AA3AF]">I'll suggest a break at a good moment.</p>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 mt-3.5">
+        <div className={tile}>
+          <p className="text-[10.5px] text-[#9AA3AF]">Today</p>
+          <p className="text-[14px] font-semibold text-[#374151] tabular-nums">{heroTime(todaySeconds)}</p>
+        </div>
+        <div className={tile}>
+          <p className="text-[10.5px] text-[#9AA3AF]">Breaks today</p>
+          <p className="text-[14px] font-semibold text-[#374151] tabular-nums">{breaksToday}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-[#EAE5DF] flex items-center justify-between">
+        <button onClick={onTakeBreak} className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+            <path d="M3 6h8v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6Z" /><path d="M11 7h1a2 2 0 0 1 0 4h-1" /><path d="M6 2.5c0 1 1 1 1 2M8.5 2.5c0 1 1 1 1 2" />
+          </svg>
+          Take a break
+        </button>
+        {!paused && (
+          <button onClick={onPause} className="text-[12.5px] font-medium text-[#7A8494] hover:text-[#374151] transition-colors">Pause</button>
+        )}
       </div>
     </div>
   )
@@ -754,120 +521,87 @@ function OnBreakScreen({ hold, awaySeconds, onBack }: {
   onBack: () => void
 }) {
   return (
-    <div className="px-4 py-5 flex flex-col items-center gap-5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="relative w-28 h-[88px]">
-        <div className="absolute inset-0 pointer-events-none rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(126,200,227,0.12) 0%, transparent 70%)', animation: 'glowPulse 2.2s ease-in-out infinite' }} />
-        <div className="relative w-full h-full" style={{ animation: 'cloudFloat 3s ease-in-out infinite' }}>
-          <PuffCloud workState="fresh" screen="on_break" />
-        </div>
-      </div>
-
-      <div className="text-center space-y-1">
-        <h2 className="text-[18px] font-semibold text-[#1A1A1A] tracking-tight">Your place is held.</h2>
-        <p className="text-[12px] text-[#BEC6D0]">Away for {formatAway(awaySeconds)}</p>
-      </div>
+    <div className="px-5 pt-3 pb-4 flex flex-col items-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="w-[120px] h-[100px]"><Cloud mood="break" /></div>
+      <p className="text-[11.5px] text-[#9AA3AF] mt-1">Away for</p>
+      <p className="text-[36px] font-semibold text-[#1A1A1A] leading-none tabular-nums tracking-tight mt-1">{formatAway(awaySeconds)}</p>
+      <p className="text-[12px] text-[#7A8494] mt-2">Your place is held.</p>
 
       {hold && (
-        <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 space-y-1">
-          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were working on</p>
+        <div className="w-full bg-white rounded-xl border border-[#EAE5DF] px-3.5 py-2.5 space-y-0.5 mt-4">
+          <p className="text-[10.5px] text-[#9AA3AF]">You were working on</p>
           <p className="text-[12.5px] font-medium text-[#374151] leading-snug">{hold.label}</p>
           {hold.note && <p className="text-[12px] text-[#7A8494] leading-snug"><span className="font-semibold">Next:</span> {hold.note}</p>}
         </div>
       )}
 
       <button onClick={onBack}
-        className="text-[12px] font-medium text-[#BEC6D0] hover:text-[#7EC8E3] transition-colors">
+        className="mt-4 text-[12.5px] font-semibold text-[#0369A1] hover:text-[#075985] transition-colors">
         I'm back →
       </button>
     </div>
   )
 }
 
-function ResumeScreen({ hold, awaySeconds, onDone }: {
+function ResumeScreen({ hold, awaySeconds, afterRain, onDone }: {
   hold: { label: string; source: string; note: string } | null
   awaySeconds: number
+  afterRain: boolean
   onDone: () => void
 }) {
   return (
-    <div className="px-4 py-5 flex flex-col items-center gap-5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="relative w-20 h-[64px]" style={{ animation: 'cloudFloat 2.4s ease-in-out infinite' }}>
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 80px 60px at 58% 40%, rgba(253,230,138,0.3) 0%, transparent 70%)' }} />
-        <PuffCloud workState="fresh" screen="resume" />
-      </div>
-
-      <div className="text-center space-y-1">
-        <h2 className="text-[22px] font-semibold text-[#1A1A1A] tracking-tight">Welcome back ☁️</h2>
-        <p className="text-[12.5px] text-[#7A8494]">You were away for {formatAway(awaySeconds)}.</p>
-      </div>
+    <div className="px-5 pt-3 pb-4 flex flex-col items-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="w-[120px] h-[100px]"><Cloud mood="welcome" afterRain={afterRain} /></div>
+      <h2 className="text-[22px] font-semibold text-[#1A1A1A] tracking-tight mt-1">Welcome back</h2>
+      <p className="text-[12px] text-[#7A8494] mt-1">You were away for {formatAway(awaySeconds)}.</p>
 
       {hold ? (
-        <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 space-y-1.5">
-          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were working on</p>
+        <div className="w-full bg-white rounded-xl border border-[#EAE5DF] px-3.5 py-3 space-y-1.5 mt-4">
+          <p className="text-[10.5px] text-[#9AA3AF]">You were working on</p>
           <p className="text-[13.5px] font-semibold text-[#1A1A1A] leading-snug">{hold.label}</p>
           {hold.source && (
-            <div className="flex gap-1.5 flex-wrap pt-0.5">
-              <span className="inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-md border bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]">
-                {hold.source}
-              </span>
-            </div>
+            <span className="inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-md border bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]">
+              {hold.source}
+            </span>
           )}
           {hold.note && (
-            <p className="text-[12.5px] text-[#854D0E] leading-snug bg-[#FFFBEB] border border-[#FDE68A]/60 rounded-lg px-2.5 py-2 mt-1">
+            <p className="text-[12.5px] text-[#854D0E] leading-snug bg-[#FFFBEB] border border-[#FDE68A]/60 rounded-lg px-2.5 py-2">
               <span className="font-semibold">Next:</span> {hold.note}
             </p>
           )}
         </div>
       ) : (
-        <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3">
-          <p className="text-[12.5px] text-[#7A8494] leading-snug">
-            Nothing was saved for this break, so there's no page to return to.
-          </p>
-        </div>
+        <p className="w-full text-[12.5px] text-[#7A8494] leading-snug bg-white rounded-xl border border-[#EAE5DF] px-3.5 py-3 mt-4">
+          Nothing was saved for this break, so there's no page to return to.
+        </p>
       )}
 
-      <div className="w-full">
-        <PrimaryBtn onClick={onDone}>Resume</PrimaryBtn>
-      </div>
+      <div className="w-full mt-4"><PrimaryBtn onClick={onDone}>Resume</PrimaryBtn></div>
     </div>
   )
 }
 
-function PuffLauncher({ screen, workState, agentRunning, onOpen }: {
-  screen: Screen; workState: WorkState; agentRunning: boolean; onOpen: () => void
-}) {
-  const [cloudHovered, setCloudHovered] = useState(false)
+function PuffLauncher({ mood, onOpen }: { mood: Mood; onOpen: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const draggedRef = useRef(false)
-  const drag = useDragHandle(v => { draggedRef.current = v })
-
-  const floatDur = FLOAT_DUR[workState]
+  const drag = useDragHandle(v => { draggedRef.current = v }, setDragging)
+  const shown: Mood = dragging ? 'dragged' : hovered && mood !== 'break' ? 'petted' : mood
 
   return (
-    <div
-      className="relative flex items-end"
-      style={{ paddingTop: '16px' }}
-    >
+    <div className="relative flex items-end" style={{ paddingTop: '16px' }}>
       <button
         {...drag}
         // A drag consumes the click it would otherwise produce; anything else opens the panel.
         onClick={() => { if (draggedRef.current) { draggedRef.current = false; return } onOpen() }}
         aria-label="Open Puff"
-        onMouseEnter={() => setCloudHovered(true)}
-        onMouseLeave={() => setCloudHovered(false)}
-        className="relative w-16 h-16 flex items-end justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7EC8E3] rounded-full transition-transform duration-200"
-        style={{ transform: cloudHovered ? 'scale(1.08)' : 'scale(1)', cursor: inExtension ? 'grab' : 'pointer', touchAction: 'none' }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="relative w-[76px] h-[64px] flex items-end justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7EC8E3] rounded-full"
+        style={{ cursor: inExtension ? (dragging ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none' }}
       >
-        <div className="relative w-14 h-11" style={{ animation: `cloudFloat ${floatDur} ease-in-out infinite` }}>
-          <PuffCloud workState={workState} screen={screen} small />
-        </div>
-
-        {agentRunning && (
-          <span className="absolute top-2 right-1.5 w-2 h-2 rounded-full bg-[#7EC8E3] border-2 border-white/80 pointer-events-none"
-            style={{ animation: 'glowPulse 1s ease-in-out infinite' }} />
-        )}
+        <Cloud mood={shown} />
       </button>
-
     </div>
   )
 }
@@ -1018,9 +752,6 @@ export default function App() {
     try { return localStorage.getItem('puffOnboarded') !== '1' } catch { return true }
   })
 
-  const WORK_DURATION: Record<WorkState, string> = {
-    fresh: '28 min', focused: '1h 02m', tired: '2h 11m', exhausted: '3h 34m', critical: '4h 47m',
-  }
 
   const goTo = useCallback((s: Screen) => { setScreen(s); setIsExpanded(true) }, [])
 
@@ -1048,6 +779,10 @@ export default function App() {
   const [awaySeconds, setAwaySeconds] = useState(0)
   const [error, setError] = useState('')
   const [workSeconds, setWorkSeconds] = useState(0)
+  const [todaySeconds, setTodaySeconds] = useState(0)
+  const [breaksToday, setBreaksToday] = useState(0)
+  // Whether the current suggestion came from finishing something, so the card can say so.
+  const [finished, setFinished] = useState(false)
   const [controls, setControls] = useState<Controls>({ enabled: true, busyUntil: 0, thresholdSeconds: 1800 })
   const backFromControls = useRef<Screen>('manual')
 
@@ -1060,6 +795,8 @@ export default function App() {
       if (!alive || !s) return
       setWorkSeconds(s.sessionSeconds || 0)
       setWorkState(workStateFor(s.sessionSeconds || 0))
+      setTodaySeconds(Math.floor(s.todaySeconds || 0))
+      setBreaksToday(s.breaksToday || 0)
       setControls({ enabled: s.enabled, busyUntil: s.busyUntil || 0, thresholdSeconds: s.thresholdSeconds || 1800 })
       // A break outlives this frame: moving to another page reloads the panel, and it has to
       // pick the held place back up rather than forget that someone is away.
@@ -1070,6 +807,7 @@ export default function App() {
       }
       const busy = ['on_break', 'resume', 'confirm', 'pause', 'controls'].includes(screen)
       if (s.mode === 'gentle_nudge' && !busy) {
+        setFinished(!!s.lastBoundaryAt && Date.now() - s.lastBoundaryAt < 90_000)
         setScreen('proactive'); setIsExpanded(true)
       }
     }
@@ -1121,6 +859,11 @@ export default function App() {
     setScreen('manual')
   }, [])
 
+  const enableAgain = useCallback(async () => {
+    await setPuffEnabled(true)
+    setControls(c => ({ ...c, enabled: true, busyUntil: 0 }))
+  }, [])
+
   const chooseTiming = useCallback(async (minutes: number) => {
     await setBreakTiming(minutes)
     setControls(c => ({ ...c, thresholdSeconds: minutes * 60 }))
@@ -1155,19 +898,30 @@ export default function App() {
     ? { label: pageLabel(page.title), source: sourceLabel(page.url) }
     : { label: heldPage?.label || 'this page', source: heldPage?.source || '' }
 
+  // The prototype preview has no real activity, so it shows a plausible number per work state.
+  const DEMO_SECONDS: Record<WorkState, number> = { fresh: 28 * 60, focused: 62 * 60, tired: 131 * 60, exhausted: 214 * 60, critical: 287 * 60 }
+  const shownSeconds = inExtension ? workSeconds : DEMO_SECONDS[workState]
+  const pausedNow = !controls.enabled || controls.busyUntil > Date.now()
+  const launcherMood: Mood = screen === 'on_break' ? 'break'
+    : screen === 'resume' ? 'welcome'
+    : pausedNow ? 'paused'
+    : screen === 'proactive' && isExpanded ? 'nudge'
+    : BASE_MOOD[workState]
+
   function renderScreen(): React.ReactNode {
     if (onboarding) return <OnboardingScreen onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {}; setOnboarding(false) }} />
 
     switch (screen) {
-      case 'proactive': return <ProactiveScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onTakeBreak={startHold} onLater={declineHold} onPause={() => goTo('pause')} />
+      case 'proactive': return <ProactiveScreen workSeconds={shownSeconds} finished={finished} onTakeBreak={startHold} onLater={declineHold} onPause={() => goTo('pause')} />
       case 'pause':     return <PauseScreen onPause={pauseFor} onTurnOff={turnOff} onBack={() => goTo('proactive')} />
       case 'controls':  return <ControlsScreen controls={controls} onTiming={chooseTiming} onPause={pauseFor} onResume={() => pauseFor(0)} onTurnOff={turnOff} onBack={() => goTo(backFromControls.current)} />
-      case 'manual':    return <ManualScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onHold={startHold} onDismiss={declineHold} />
+      case 'manual':    return <HomeScreen workState={workState} workSeconds={shownSeconds} todaySeconds={inExtension ? todaySeconds : 3 * 3600 + 40 * 60} breaksToday={inExtension ? breaksToday : 2}
+                            controls={controls} onTakeBreak={startHold} onPause={() => goTo('pause')} onResume={() => { if (!controls.enabled) enableAgain(); else pauseFor(0) }} />
       case 'confirm':   return <ConfirmScreen workState={workState} page={confirmPage} note={note} onNote={setNote} onConfirm={confirmHold} onBack={() => goTo(screen === 'confirm' ? 'manual' : screen)} />
       // Interviews: after a short break people pick up without help, so the card only earns its
       // place after a longer one. Under five minutes, "I'm back" goes straight to the work.
       case 'on_break':  return <OnBreakScreen hold={heldPage} awaySeconds={awaySeconds} onBack={() => (awaySeconds < 300 ? handleDone() : goTo('resume'))} />
-      case 'resume':    return <ResumeScreen hold={heldPage} awaySeconds={awaySeconds} onDone={handleDone} />
+      case 'resume':    return <ResumeScreen hold={heldPage} awaySeconds={awaySeconds} afterRain={(hold?.workedSeconds ?? (inExtension ? 0 : 5400)) >= 45 * 60} onDone={handleDone} />
     }
   }
 
@@ -1217,9 +971,7 @@ export default function App() {
           </PuffPanel>
         )}
         <PuffLauncher
-          screen={screen}
-          workState={workState}
-          agentRunning={screen === 'on_break' && breakMode === 'agent'}
+          mood={launcherMood}
           onOpen={() => {
             if (!isExpanded) {
               setScreen(screen === 'on_break' || screen === 'resume' ? screen : 'manual')

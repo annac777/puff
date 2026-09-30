@@ -138,3 +138,80 @@ body {
 
 html,body,#root{background:transparent!important;margin:0;height:100%;overflow:hidden}
 body{padding:24px 24px 24px 24px;box-sizing:border-box}
+
+/* ─── Puff character (Cloud.tsx). Everything is prefixed pf- to stay clear of the prototype's own
+   keyframes. Group transforms pivot at the cloud's base; small parts pivot on themselves. ───── */
+.pf-fb, .pf-petal, .pf-leaf { transform-box: fill-box; transform-origin: center; }
+.pf-vb { transform-box: view-box; transform-origin: 60px 84px; }
+.pf-bob { animation: pf-bob 2.4s ease-in-out infinite; }
+.pf-blink { animation: pf-blink 3.6s infinite; }
+.pf-scan { animation: pf-scan 2.2s ease-in-out infinite; }
+.pf-lean { animation: pf-lean 4s ease-in-out infinite; }
+.pf-breath { animation: pf-breath 4.5s ease-in-out infinite; }
+.pf-slowblink { animation: pf-slowblink 4.5s infinite; }
+.pf-yawn { animation: pf-yawn 3.2s ease-in-out infinite; }
+.pf-squint { animation: pf-squint 3.2s ease-in-out infinite; }
+.pf-nod { animation: pf-nod 3s ease-in-out infinite; }
+.pf-zz { animation: pf-zz 3s ease-out infinite; }
+.pf-hop { animation: pf-hop 1.6s ease-in-out infinite; }
+.pf-wave { animation: pf-wave .8s ease-in-out infinite alternate; transform-box: view-box; transform-origin: 92px 58px; }
+.pf-pop { animation: pf-pop 1.6s ease-in-out infinite; }
+.pf-confetti { animation: pf-confetti 1.8s linear infinite; }
+.pf-jump { animation: pf-jump 1.8s cubic-bezier(.3,.7,.4,1) infinite; }
+.pf-hug { animation: pf-hug 2s ease-in-out infinite; }
+.pf-steam { animation: pf-steam 2.6s ease-out infinite; }
+.pf-sip { animation: pf-sip 5s ease-in-out infinite; transform-box: view-box; transform-origin: 60px 70px; }
+.pf-note { animation: pf-note 2.8s ease-out infinite; }
+.pf-sway { animation: pf-sway 2.8s ease-in-out infinite; }
+.pf-twinkle-star { animation: pf-twinkle-star 1.4s ease-in-out infinite; }
+.pf-twinkle { animation: pf-twinkle 1.8s ease-in-out infinite; }
+.pf-wobble { animation: pf-wobble .5s ease-in-out infinite alternate; }
+.pf-squish { animation: pf-squish 1.2s ease-in-out infinite; }
+.pf-heart { animation: pf-heart 2.2s ease-out infinite; }
+.pf-spin { animation: pf-spin 18s linear infinite; transform-box: fill-box; transform-origin: center; }
+.pf-drop { animation: pf-drop 1.1s linear infinite; }
+.pf-drop-fast { animation: pf-drop .7s linear infinite; }
+.pf-ripple { animation: pf-ripple 1.4s ease-out infinite; }
+.pf-firefly { animation: pf-firefly 3s ease-in-out infinite; }
+.pf-snow { animation: pf-snow 4s linear infinite; }
+.pf-petal { animation: pf-petal 4.5s linear infinite; }
+.pf-leaf { animation: pf-leaf 5s linear infinite; }
+.pf-rainbow { stroke-dasharray: 160; animation: pf-rainbow 1.2s ease-out both; }
+
+@keyframes pf-bob { 50% { transform: translateY(-5px); } }
+@keyframes pf-blink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
+@keyframes pf-scan { 0%, 100% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
+@keyframes pf-lean { 50% { transform: rotate(-3deg); } }
+@keyframes pf-breath { 50% { transform: scale(1.04, .95); } }
+@keyframes pf-slowblink { 0%, 70%, 100% { transform: scaleY(1); } 80%, 86% { transform: scaleY(.1); } }
+@keyframes pf-yawn { 0%, 30%, 100% { transform: scale(.4); } 50%, 70% { transform: scale(1.5, 1.9); } }
+@keyframes pf-squint { 0%, 30%, 100% { transform: scaleY(1); } 50%, 70% { transform: scaleY(.2); } }
+@keyframes pf-nod { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(3px) rotate(4deg); } }
+@keyframes pf-zz { 0% { transform: translate(0, 0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(8px, -18px); opacity: 0; } }
+@keyframes pf-hop { 0%, 100% { transform: translateY(0) scale(1.05, .95); } 40% { transform: translateY(-10px) scale(.97, 1.03); } }
+@keyframes pf-wave { from { transform: rotate(-20deg); } to { transform: rotate(25deg); } }
+@keyframes pf-pop { 0%, 100% { transform: scale(.8); } 50% { transform: scale(1.15); } }
+@keyframes pf-confetti { 0% { transform: translateY(-14px) rotate(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(40px) rotate(260deg); opacity: 0; } }
+@keyframes pf-jump { 0%, 100% { transform: translateY(0) scale(1.06, .94); } 35% { transform: translateY(-14px) scale(.96, 1.05); } 60% { transform: translateY(0) scale(1.08, .92); } }
+@keyframes pf-hug { 50% { transform: scale(1.03, .97); } }
+@keyframes pf-steam { 0% { transform: translateY(0); opacity: 0; } 25% { opacity: .8; } 100% { transform: translateY(-14px); opacity: 0; } }
+@keyframes pf-sip { 0%, 60%, 100% { transform: rotate(0); } 70%, 85% { transform: rotate(-6deg); } }
+@keyframes pf-note { 0% { transform: translate(0, 0); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(10px, -20px); opacity: 0; } }
+@keyframes pf-sway { 50% { transform: rotate(4deg); } }
+@keyframes pf-twinkle-star { 0%, 100% { transform: scale(.5) rotate(0); opacity: .5; } 50% { transform: scale(1.2) rotate(30deg); opacity: 1; } }
+@keyframes pf-twinkle { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@keyframes pf-wobble { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes pf-squish { 50% { transform: scale(1.1, .88); } }
+@keyframes pf-heart { 0% { transform: translateY(0) scale(.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-20px) scale(1); opacity: 0; } }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+@keyframes pf-drop { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateY(22px); opacity: 0; } }
+@keyframes pf-ripple { 0% { transform: scale(.3); opacity: .7; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes pf-firefly { 0%, 100% { transform: translate(0, 0); opacity: .2; } 50% { transform: translate(6px, -8px); opacity: 1; } }
+@keyframes pf-snow { 0% { transform: translate(0, -10px); opacity: 0; } 10% { opacity: 1; } 50% { transform: translate(6px, 45px); } 100% { transform: translate(-4px, 105px); opacity: 0; } }
+@keyframes pf-petal { 0% { transform: translate(0, -10px) rotate(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(-26px, 105px) rotate(320deg); opacity: 0; } }
+@keyframes pf-leaf { 0% { transform: translate(0, -10px) rotate(0); opacity: 0; } 10% { opacity: 1; } 50% { transform: translate(14px, 50px) rotate(180deg); } 100% { transform: translate(-6px, 105px) rotate(360deg); opacity: 0; } }
+@keyframes pf-rainbow { from { stroke-dashoffset: 160; } to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-anim, .pf-anim * { animation: none !important; }
+}

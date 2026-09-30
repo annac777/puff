@@ -39,22 +39,24 @@
     lastActivityAt:0,lastKeyAt:0,lastScrollAt:0,lastBoundaryAt:0,lastTabChangeAt:0,designLastChangeAt:0,designConnected:false,recentTyping:false,possibleBreakpoint:false,
     mode:"quiet",laterCount:0,cooldownUntil:0,responseHistory:[],checkpoint:null,demoMode:false,thresholdSeconds:1800,
     windows:[],rhythm:{intensity:0,scatter:0,settling:0,windows:0},learnedThreshold:0,lastAction:"",lastActionAt:0,pausedAt:0,
-    dailyInvitations:0,day:day(now),sessionInvited:false,enabled:true,blocked:false,busyUntil:0,needScore:0,opportunityScore:0,reason:"Waiting for activity"};}
+    dailyInvitations:0,todaySeconds:0,breaksToday:0,day:day(now),sessionInvited:false,enabled:true,blocked:false,busyUntil:0,needScore:0,opportunityScore:0,reason:"Waiting for activity"};}
   function evaluate(state,now=Date.now()){
     const next={...initialState(now),...state};
-    if(next.day!==day(now)){next.day=day(now);next.dailyInvitations=0;}
+    if(next.day!==day(now)){next.day=day(now);next.dailyInvitations=0;next.todaySeconds=0;next.breaksToday=0;}
     const elapsed=Math.min(30,Math.max(0,(now-next.lastEvaluatedAt)/1000));
     const recentActivity=Math.max(next.lastActivityAt,next.designConnected?next.designLastChangeAt:0);
     // chrome.idle watches input across the whole machine, so work in an editor or a desktop app
     // still counts. Gating on browser input alone meant a morning in VS Code registered as zero.
     const present=next.idleState==="active";
     const counting=next.enabled&&!next.blocked&&present&&!["on_break","resume"].includes(next.mode);
-    if(counting)next.activeSeconds+=elapsed;
+    if(counting){next.activeSeconds+=elapsed;next.todaySeconds+=elapsed;}
     next.windows=rollWindows(next.windows,now,windowMs(next),elapsed,counting);
     next.rhythm=rhythmOf(next.windows);
     next.lastEvaluatedAt=now;next.sessionSeconds=Math.floor(next.activeSeconds);
     if(["idle","locked"].includes(next.idleState)){
       next.idleSince=next.idleSince??now;
+      // Stepping away on their own counts as a break too, once, and only after some real work.
+      if(now-next.idleSince>=120_000&&next.activeSeconds>=60)next.breaksToday++;
       if(now-next.idleSince>=120_000){next.activeSeconds=0;next.sessionSeconds=0;next.sessionInvited=false;next.windows=[];next.rhythm=rhythmOf([]);next.pausedAt=0;}
     }else next.idleSince=null;
     const pauseMs=next.demoMode?2000:10_000;
@@ -139,8 +141,8 @@
       // Interviews: a heavy checkpoint on every break is itself a reason not to take one, so the
       // next step is optional and an empty one is fine.
       const note=String(fields.note||"").trim().slice(0,500);
-      next.checkpoint={title:state.currentTabTitle,url:state.currentTabUrl,tabId:state.currentTabId,note,savedAt:now};
-      next.mode="on_break";next.breakStartedAt=now;
+      next.checkpoint={title:state.currentTabTitle,url:state.currentTabUrl,tabId:state.currentTabId,note,savedAt:now,workedSeconds:Math.floor(state.activeSeconds||0)};
+      next.mode="on_break";next.breakStartedAt=now;next.breaksToday=(state.breaksToday||0)+1;
     }else if(action==="resume"){next.mode="resume";}
     else if(action==="continue"){next.mode="quiet";next.activeSeconds=0;next.sessionSeconds=0;next.sessionStartedAt=now;next.sessionInvited=false;next.laterCount=0;next.cooldownUntil=0;next.windows=[];next.rhythm=rhythmOf([]);}
     return next;

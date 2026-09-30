@@ -11,6 +11,8 @@ export type Hold = {
   tabId: number | null
   note: string
   savedAt: number
+  /** How long the stretch before this break was, so the welcome back can tell a late break. */
+  workedSeconds?: number
 }
 
 export type ActivityState = {
@@ -19,6 +21,9 @@ export type ActivityState = {
   sessionSeconds: number
   busyUntil: number
   thresholdSeconds: number
+  todaySeconds: number
+  breaksToday: number
+  lastBoundaryAt: number
   rhythm: { intensity: number; scatter: number; settling: number; windows: number }
   checkpoint: Hold | null
   reason: string
@@ -135,6 +140,14 @@ export function formatDuration(seconds: number): string {
   return h ? `${h}h ${m.toString().padStart(2, '0')}m` : `${m} min`
 }
 
+/** The big number on the home screen: "48m", "1h 12m". */
+export function heroTime(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  return h ? `${h}h ${m}m` : `${m}m`
+}
+
 export function formatAway(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds))
   if (s < 60) return `${s}s`
@@ -159,7 +172,7 @@ export function workStateFor(seconds: number): WorkState {
  * forward deltas instead of juggling pointer-events on the iframe. State lives in refs because a
  * re-render mid-drag would otherwise reset a closure and strand the gesture.
  */
-export function useDragHandle(onDragged?: (dragged: boolean) => void) {
+export function useDragHandle(onDragged?: (dragged: boolean) => void, onDragging?: (active: boolean) => void) {
   const DRAG_THRESHOLD = 4
   const state = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null)
 
@@ -185,6 +198,7 @@ export function useDragHandle(onDragged?: (dragged: boolean) => void) {
       const dx = e.screenX - s.x
       const dy = e.screenY - s.y
       if (!s.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+      if (!s.moved) onDragging?.(true)
       s.moved = true
       onDragged?.(true)
       post('PUFF_DRAG_MOVE', { dx, dy })
@@ -194,11 +208,13 @@ export function useDragHandle(onDragged?: (dragged: boolean) => void) {
       if (!s) return
       try { (e.currentTarget as HTMLElement).releasePointerCapture(s.id) } catch { /* already gone */ }
       state.current = null
+      onDragging?.(false)
       post('PUFF_DRAG_END')
     },
     onPointerCancel() {
       if (!state.current) return
       state.current = null
+      onDragging?.(false)
       post('PUFF_DRAG_END')
     },
   }

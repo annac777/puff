@@ -175,3 +175,22 @@ test("video calls on Teams and Webex are protected like Meet and Zoom",()=>{
   for(const url of ["https://teams.microsoft.com/l/meetup","https://acme.webex.com/meet/x","https://meet.google.com/abc"])assert.equal(core.protectedUrl(url),true,url);
   assert.equal(core.protectedUrl("https://docs.google.com/document/d/1"),false);
 });
+
+// ── Today at a glance ─────────────────────────────────────────────────────────
+test("today's total grows with work and survives a break; the count includes breaks taken without Puff",()=>{
+  let s=core.evaluate({...core.initialState(0),idleState:"active",lastEvaluatedAt:0},20000);
+  assert.equal(s.todaySeconds,20);
+  s=core.evaluate({...s,activeSeconds:600,idleState:"idle",idleSince:25000},150000);
+  assert.equal(s.activeSeconds,0,"the stretch resets");
+  assert.ok(s.todaySeconds>=20,"the day does not");
+  assert.equal(s.breaksToday,1);
+  s=core.evaluate(s,160000);
+  assert.equal(s.breaksToday,1,"one absence is one break, not one per check");
+  s=core.applyResponse({...s,activeSeconds:1800,currentTabTitle:"Doc",currentTabUrl:"https://a.test/"},"take_break",170000);
+  assert.equal(s.breaksToday,2);
+  assert.equal(s.checkpoint.workedSeconds,1800,"remembers how long the stretch was, for the welcome back");
+});
+test("a new day starts the totals over",()=>{
+  const s=core.evaluate({...core.initialState(0),todaySeconds:5000,breaksToday:3,day:"2000-01-01"},86400000*3);
+  assert.equal(s.todaySeconds,0);assert.equal(s.breaksToday,0);
+});
