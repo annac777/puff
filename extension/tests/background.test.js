@@ -61,3 +61,22 @@ test('Expanded-only build rejects minimize without navigating or creating tabs',
   assert.equal(w.updated.length,0);
   assert.equal((await w.send({type:'MINIMIZE_PANEL'},{url:'https://example.org/',tab:{id:7}})).ok,false);
 });
+
+test('browsing leaves no tab titles or URLs behind; only a save reads the page',async()=>{
+  // An older build kept the page in front at all times. That has to be forgotten on upgrade.
+  const w=worker({...core.initialState(),currentTabTitle:'Inbox – someone@example.org',currentTabUrl:'https://mail.example.org/'});
+  await w.send({type:'ACTIVITY_DELTA',delta:{clicks:3,lastActivityAt:Date.now()}},{tab:{id:7,url:'https://example.org/work',title:'Work'}});
+  let stored=w.storage.offRampState;
+  assert.equal(stored.currentTabTitle,'');
+  assert.equal(stored.currentTabUrl,'');
+  assert.doesNotMatch(JSON.stringify(stored),/Inbox|example\.org\/work/);
+
+  const sender={url:'chrome-extension://fixture/app/index.html',tab:{id:7,url:'https://example.org/work',title:'Work'}};
+  const held=await w.send({type:'SAVE_HOLD',note:'Next: tighten the intro'},sender);
+  assert.equal(held.hold.title,'Work');
+  stored=w.storage.offRampState;
+  // The page the person chose to hold is kept; nothing else about their browsing is.
+  assert.equal(stored.checkpoint.title,'Work');
+  assert.equal(stored.currentTabTitle,'');
+  assert.equal(stored.currentTabUrl,'');
+});

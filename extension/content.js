@@ -9,6 +9,17 @@
 
   // The widget is pinned to a corner by default; once dragged it keeps an explicit position.
   let dragOrigin = null;
+  // Most survey respondents wanted a companion that stays hidden and appears only when it has
+  // something to say. So the cloud is tucked away while Puff is merely watching, and shows itself
+  // when it invites a break, while a place is held, or when someone opens it from the toolbar.
+  let summoned = false;
+  function syncTuck() {
+    const watching = ["quiet", "considering"].includes(latestState?.mode);
+    root.classList.toggle("or-tucked", watching && !summoned && !root.classList.contains("or-open"));
+  }
+  function askFrameToOpen() {
+    try { panelFrame?.contentWindow?.postMessage({ type: "PUFF_OPEN" }, "*"); } catch {}
+  }
   function placeAt(left, top) {
     const maxLeft = Math.max(0, window.innerWidth - root.offsetWidth);
     const maxTop = Math.max(0, window.innerHeight - root.offsetHeight);
@@ -59,6 +70,7 @@
       panelFrame.className = "or-panel-frame";
       panelFrame.title = "Puff handoff panel";
       panelFrame.src = src;
+      panelFrame.addEventListener("load", () => { if (summoned) askFrameToOpen(); });
       root.appendChild(panelFrame);
     }
     root.classList.remove("or-hidden");
@@ -71,6 +83,7 @@
     root.classList.toggle("or-hidden", !state.enabled || state.blocked);
     // This build has no collapsed launcher. Mount directly in the current page.
     if (state.enabled && !state.blocked) expandPanel();
+    syncTuck();
   }
   document.addEventListener("click", event => {
     if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
@@ -86,7 +99,12 @@
   }, { capture:true, passive:true });
   function onRuntimeMessage(message) {
     if (message.type === "OFF_RAMP_STATE") render(message.state);
-    if (message.type === "OFF_RAMP_EXPAND" || message.type === "OFF_RAMP_SHOW") expandPanel();
+    if (message.type === "OFF_RAMP_EXPAND" || message.type === "OFF_RAMP_SHOW") {
+      summoned = true;
+      expandPanel();
+      syncTuck();
+      askFrameToOpen();
+    }
     if (message.type === "OFF_RAMP_PANEL_SIZE") root.classList.toggle("or-wide", message.expanded);
   }
   chrome.runtime.onMessage.addListener(onRuntimeMessage);
@@ -94,7 +112,12 @@
   window.addEventListener("message", event => {
     if (event.source !== panelFrame?.contentWindow) return;
     const data = event.data;
-    if (data?.type === "PUFF_FRAME") { root.classList.toggle("or-open", !!data.expanded); clampIntoView(); }
+    if (data?.type === "PUFF_FRAME") {
+      root.classList.toggle("or-open", !!data.expanded);
+      if (!data.expanded) summoned = false;
+      syncTuck();
+      clampIntoView();
+    }
     if (data?.type === "PUFF_DRAG_START") dragOrigin = root.getBoundingClientRect();
     if (data?.type === "PUFF_DRAG_MOVE" && dragOrigin) {
       root.classList.add("or-dragging");

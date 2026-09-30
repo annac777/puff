@@ -2,9 +2,12 @@ importScripts("core.js");
 const STORAGE_KEY="offRampState";
 let queue=Promise.resolve();
 const serialize=fn=>{const job=queue.then(fn);queue=job.catch(()=>{});return job;};
-async function getState(){const data=(await chrome.storage.local.get(STORAGE_KEY))[STORAGE_KEY];if(data?.version===2)return {...OffRampCore.initialState(),...data};return {...OffRampCore.initialState(),...(data?.checkpoint?{checkpoint:data.checkpoint}:{}),...(data?.enabled===false?{enabled:false}:{})};}
+// Survey respondents were least comfortable with Puff seeing tab titles and URLs, so the page is
+// read once, when someone saves it, and never kept while they browse. Older builds kept both.
+const forget=state=>({...state,currentTabTitle:"",currentTabUrl:""});
+async function getState(){const data=(await chrome.storage.local.get(STORAGE_KEY))[STORAGE_KEY];if(data?.version===2)return forget({...OffRampCore.initialState(),...data});return {...OffRampCore.initialState(),...(data?.checkpoint?{checkpoint:data.checkpoint}:{}),...(data?.enabled===false?{enabled:false}:{})};}
 async function saveState(state){await chrome.storage.local.set({[STORAGE_KEY]:state});const [tab]=await chrome.tabs.query({active:true,lastFocusedWindow:true});if(tab?.id)chrome.tabs.sendMessage(tab.id,{type:"OFF_RAMP_STATE",state,intervention:OffRampCore.interventionFor(state)}).catch(()=>{});return state;}
-async function tabContext(state,tab){if(!tab||!state.enabled)return state;return {...state,currentTabTitle:(tab.title||"").slice(0,200),currentTabUrl:OffRampCore.safeUrl(tab.url),currentTabId:tab.id,blocked:OffRampCore.protectedUrl(tab.url)};}
+async function tabContext(state,tab){if(!tab||!state.enabled)return state;return {...state,currentTabId:tab.id,blocked:OffRampCore.protectedUrl(tab.url)};}
 function isPanel(sender){return sender.url?.startsWith(chrome.runtime.getURL(""));}
 async function restoreTab(anchor,fileUrl){const url=OffRampCore.safeUrl(fileUrl||anchor?.url);if(!url)throw new Error("No saved browser link. Use the open Figma plugin to restore.");let tab;try{if(anchor?.tabId)tab=await chrome.tabs.get(anchor.tabId);}catch{}if(tab&&OffRampCore.safeUrl(tab.url)!==url)tab=null;if(!tab)tab=(await chrome.tabs.query({})).find(t=>OffRampCore.safeUrl(t.url)===url);if(tab){await chrome.windows.update(tab.windowId,{focused:true});await chrome.tabs.update(tab.id,{active:true});}else await chrome.tabs.create({url});}
 async function start(){chrome.idle.setDetectionInterval(15);await chrome.alarms.create("evaluate-off-ramp",{periodInMinutes:0.5});const [tab]=await chrome.tabs.query({active:true,lastFocusedWindow:true});const state=await tabContext(await getState(),tab);state.idleState=await chrome.idle.queryState(15);await saveState(OffRampCore.evaluate(state));}
@@ -33,7 +36,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       return serialize(async()=>{
         const anchor={title:(sender.tab.title||"").slice(0,200),url:sender.tab.url,tabId:sender.tab.id};
         let state=await tabContext(await getState(),sender.tab);
-        state=OffRampCore.applyResponse(state,"take_break",Date.now(),{note:String(message.note||"").trim()||anchor.title});
+        state={...state,currentTabTitle:anchor.title,currentTabUrl:OffRampCore.safeUrl(anchor.url)};
+        state=forget(OffRampCore.applyResponse(state,"take_break",Date.now(),{note:String(message.note||"").trim()||anchor.title}));
         await saveState(state);
         return {ok:true,hold:state.checkpoint};
       });

@@ -915,7 +915,11 @@ export default function App() {
   const [screen, setScreen]         = useState<Screen>(inExtension ? 'manual' : 'proactive')
   const [workState, setWorkState]   = useState<WorkState>('exhausted')
   // In the page the cloud sits quietly until the person opens it.
-  const [isExpanded, setIsExpanded] = useState(!inExtension)
+  // First run opens by itself so onboarding is seen; after that Puff stays tucked away until needed.
+  const [isExpanded, setIsExpanded] = useState(() => {
+    if (!inExtension) return true
+    try { return !localStorage.getItem('puffOnboarded') } catch { return false }
+  })
   const [breakMode, setBreakMode]   = useState<BreakMode>(null)
   const [customTask, setCustomTask] = useState('')
   const [onboarding, setOnboarding] = useState(() => {
@@ -928,6 +932,16 @@ export default function App() {
   }
 
   const goTo = useCallback((s: Screen) => { setScreen(s); setIsExpanded(true) }, [])
+
+  // The toolbar button is the way in while the cloud is tucked away.
+  useEffect(() => {
+    if (!inExtension) return
+    const onMessage = (event: MessageEvent) => {
+      if (event.source === window.parent && event.data?.type === 'PUFF_OPEN') setIsExpanded(true)
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
 
   useEffect(() => {
     if (!inExtension) return

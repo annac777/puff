@@ -48,3 +48,4 @@
 #off-ramp-root.or-expanded>.or-panel-frame{display:block!important;width:100%!important;height:100%!important;border:0!important;margin:0!important;padding:0!important;background:transparent!important;color-scheme:normal}
 #off-ramp-root.or-dragging{transition:none!important}
 #off-ramp-root.or-dragging .or-panel-frame{pointer-events:none!important}
+#off-ramp-root.or-expanded.or-tucked{opacity:0!important;pointer-events:none!important;transform:translateY(8px)!important}
