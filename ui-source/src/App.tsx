@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Cloud, type Mood } from './Cloud'
 import { inExtension, activityState, currentPage, saveHold, restoreTab, resetActivity, declineBreak,
-  pauseUntil, setPuffEnabled, setBreakTiming, TIMING_MINUTES, endOfToday, clockTime,
+  pauseUntil, setPuffEnabled, setBreakTiming, loadUi, saveUi, onUiChange, getTuck, setTuck, TIMING_MINUTES, endOfToday, clockTime,
   heroTime, sourceLabel, pageLabel, formatAway, workStateFor, useDragHandle, type Hold } from './puff-bridge'
 
 type Screen    = 'proactive' | 'manual' | 'confirm' | 'on_break' | 'resume' | 'pause' | 'controls'
@@ -98,6 +98,13 @@ function Sticker({ bg, tape = 'rgba(249,201,214,.85)', tilt = 0, className = '',
       <div className="puff-tape" style={{ background: tape }} />
       {children}
     </div>
+  )
+}
+
+/** Back sits top-left as a real button, where people look for it. */
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="puff-btn puff-mono bg-white text-[11.5px] px-2.5 h-7 self-start">← back</button>
   )
 }
 
@@ -299,13 +306,11 @@ function ProactiveScreen({ workSeconds, finished, onTakeBreak, onLater, onPause 
         </div>
       </div>
       <p className="text-[14.5px] font-extrabold puff-ink mt-2.5">good moment for a break?</p>
-      <div className="flex gap-2.5 justify-center mt-3">
-        <button onClick={onTakeBreak} className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-4 h-8">BREAK</button>
-        <button onClick={onLater} className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-4 h-8">LATER</button>
+      <div className="flex gap-2 justify-center mt-3 pb-0.5">
+        <button onClick={onTakeBreak} className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
+        <button onClick={onLater} className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
+        <button onClick={onPause} className="puff-btn puff-mono bg-[#E3DCF5] text-[12px] px-3.5 h-8">PAUSE</button>
       </div>
-      <button onClick={onPause} className="puff-mono text-[11px] text-[#8A93A8] hover:text-[#34405E] mt-2.5 underline-offset-2 hover:underline">
-        or pause for a while
-      </button>
     </div>
   )
 }
@@ -315,9 +320,10 @@ function ProactiveScreen({ workSeconds, finished, onTakeBreak, onLater, onPause 
 function PauseScreen({ onPause, onTurnOff, onBack }: {
   onPause: (until: number) => void; onTurnOff: () => void; onBack: () => void
 }) {
-  const option = 'puff-btn w-full text-left px-3.5 py-2.5 bg-white'
+  const option = 'puff-btn w-full text-left px-3.5 py-2.5'
   return (
     <div className="px-4 py-3.5 flex flex-col gap-3" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <BackButton onClick={onBack} />
       <div className="flex items-center gap-2.5">
         <div className="w-[76px] h-[64px] flex-shrink-0"><Cloud mood="paused" /></div>
         <div>
@@ -325,25 +331,26 @@ function PauseScreen({ onPause, onTurnOff, onBack }: {
           <p className="text-[11.5px] text-[#5A6480] leading-snug">for meetings, deadlines, or when you want to keep going.</p>
         </div>
       </div>
-      <button className={option} onClick={() => onPause(Date.now() + 60 * 60 * 1000)}>
+      <button className={`${option} bg-white`} onClick={() => onPause(Date.now() + 60 * 60 * 1000)}>
         <span className="text-[13px]">for 1 hour</span>
       </button>
-      <button className={option} onClick={() => onPause(endOfToday())}>
+      <button className={`${option} bg-white`} onClick={() => onPause(endOfToday())}>
         <span className="text-[13px]">for the rest of today</span>
       </button>
       <button className={`${option} bg-[#FCE3EA]`} onClick={onTurnOff}>
         <span className="block text-[13px]">turn puff off</span>
         <span className="block puff-mono text-[10.5px] font-normal text-[#5A6480] mt-0.5">click the puff icon in your toolbar to turn it back on</span>
       </button>
-      <div className="flex justify-center"><GhostBtn onClick={onBack}>← back</GhostBtn></div>
     </div>
   )
 }
 
 // ─── State 6: Privacy and controls ────────────────────────────────────────────
 
-function ControlsScreen({ controls, onTiming, onPause, onResume, onTurnOff, onBack }: {
+function ControlsScreen({ controls, tuck, onTuck, onTiming, onPause, onResume, onTurnOff, onBack }: {
   controls: Controls
+  tuck: boolean
+  onTuck: (tuck: boolean) => void
   onTiming: (minutes: number) => void
   onPause: (until: number) => void
   onResume: () => void
@@ -354,7 +361,8 @@ function ControlsScreen({ controls, onTiming, onPause, onResume, onTurnOff, onBa
   const minutes = Math.round(controls.thresholdSeconds / 60)
   const chip = (on: boolean) => `puff-btn h-8 text-[12px] ${on ? 'bg-[#FFD66B]' : 'bg-white font-medium'}`
   return (
-    <div className="px-4 pt-4 pb-3.5 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+    <div className="px-4 pt-3.5 pb-4 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <BackButton onClick={onBack} />
       <Sticker bg="#DCEFFA" tilt={-1}>
         <div className="px-3 pt-3 pb-2.5 space-y-1">
           <Label>what puff notices</Label>
@@ -398,7 +406,13 @@ function ControlsScreen({ controls, onTiming, onPause, onResume, onTurnOff, onBa
         )}
         <GhostBtn onClick={onTurnOff}>turn puff off</GhostBtn>
       </section>
-      <div className="flex justify-center"><GhostBtn onClick={onBack}>← done</GhostBtn></div>
+      <section className="space-y-2">
+        <Label>on the page</Label>
+        <button onClick={() => onTuck(!tuck)} className="puff-btn w-full bg-white flex items-center justify-between px-3 h-10 text-[12.5px] font-medium">
+          <span>hide puff until it has something to say</span>
+          <span className={`puff-mono text-[11px] px-1.5 rounded border-2 border-[#34405E] ${tuck ? 'bg-[#FFD66B]' : 'bg-white'}`}>{tuck ? 'ON' : 'OFF'}</span>
+        </button>
+      </section>
     </div>
   )
 }
@@ -453,7 +467,7 @@ function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, control
 
       <div className="mt-4 flex items-center justify-between">
         <button onClick={onTakeBreak} className="puff-btn bg-[#FFD66B] text-[12.5px] px-3.5 h-9">take a break</button>
-        {!paused && <GhostBtn onClick={onPause}>pause</GhostBtn>}
+        {!paused && <button onClick={onPause} className="puff-btn bg-[#E3DCF5] text-[12.5px] px-3.5 h-9">pause</button>}
       </div>
     </div>
   )
@@ -478,8 +492,9 @@ function ConfirmScreen({ workState, page, note, onNote, onConfirm, onBack }: {
   }, [onBack, onConfirm])
 
   return (
-    <div className="px-4 pt-3 pb-4 flex flex-col gap-3.5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="flex items-center gap-2">
+    <div className="px-4 pt-3.5 pb-4 flex flex-col gap-3.5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <BackButton onClick={onBack} />
+      <div className="flex items-center gap-2 -mt-1">
         <div className="w-[76px] h-[64px] flex-shrink-0"><PuffCloud workState={workState} screen="confirm" /></div>
         <p className="puff-mono text-[11.5px] text-[#5A6480] leading-snug">i'll bookmark where you are, so coming back is easy.</p>
       </div>
@@ -506,7 +521,6 @@ function ConfirmScreen({ workState, page, note, onNote, onConfirm, onBack }: {
       </div>
 
       <PrimaryBtn onClick={onConfirm}>start my break</PrimaryBtn>
-      <div className="flex justify-center -mt-1"><GhostBtn onClick={onBack}>← back</GhostBtn></div>
     </div>
   )
 }
@@ -773,6 +787,35 @@ export default function App() {
   const [finished, setFinished] = useState(false)
   const [controls, setControls] = useState<Controls>({ enabled: true, busyUntil: 0, thresholdSeconds: 1800 })
   const backFromControls = useRef<Screen>('manual')
+  const [tuck, setTuckState] = useState(false)
+  useEffect(() => { getTuck().then(setTuckState) }, [])
+  const chooseTuck = useCallback((v: boolean) => { setTuckState(v); setTuck(v) }, [])
+
+  // One Puff across tabs. The last tab to change what is open wins; other tabs follow. Nothing
+  // is written until this tab has read the shared state, or opening a new tab would reset it.
+  const sharedKey = useRef('')
+  const sharedReady = useRef(false)
+  useEffect(() => {
+    if (!inExtension) return
+    const apply = (ui: { expanded: boolean; screen: string }) => {
+      sharedKey.current = `${ui.expanded}|${ui.screen}`
+      setIsExpanded(ui.expanded)
+      setScreen(ui.screen as Screen)
+    }
+    loadUi().then(ui => { if (ui) apply(ui); sharedReady.current = true })
+    return onUiChange(apply)
+  }, [])
+  useEffect(() => {
+    if (!inExtension || !sharedReady.current) return
+    const key = `${isExpanded}|${screen}`
+    if (key === sharedKey.current) return
+    sharedKey.current = key
+    saveUi({ expanded: isExpanded, screen })
+  }, [isExpanded, screen])
+  // Arriving on "hold your place" from another tab: name the page this tab is on.
+  useEffect(() => {
+    if (inExtension && screen === 'confirm' && !page) currentPage().then(setPage)
+  }, [screen, page])
 
   // Measured activity drives the mood, the "Working for …" pill, and the nudge.
   useEffect(() => {
@@ -902,7 +945,7 @@ export default function App() {
     switch (screen) {
       case 'proactive': return <ProactiveScreen workSeconds={shownSeconds} finished={finished} onTakeBreak={startHold} onLater={declineHold} onPause={() => goTo('pause')} />
       case 'pause':     return <PauseScreen onPause={pauseFor} onTurnOff={turnOff} onBack={() => goTo('proactive')} />
-      case 'controls':  return <ControlsScreen controls={controls} onTiming={chooseTiming} onPause={pauseFor} onResume={() => pauseFor(0)} onTurnOff={turnOff} onBack={() => goTo(backFromControls.current)} />
+      case 'controls':  return <ControlsScreen controls={controls} tuck={tuck} onTuck={chooseTuck} onTiming={chooseTiming} onPause={pauseFor} onResume={() => pauseFor(0)} onTurnOff={turnOff} onBack={() => goTo(backFromControls.current)} />
       case 'manual':    return <HomeScreen workState={workState} workSeconds={shownSeconds} todaySeconds={inExtension ? todaySeconds : 3 * 3600 + 40 * 60} breaksToday={inExtension ? breaksToday : 2}
                             controls={controls} onTakeBreak={startHold} onPause={() => goTo('pause')} onResume={() => { if (!controls.enabled) enableAgain(); else pauseFor(0) }} />
       case 'confirm':   return <ConfirmScreen workState={workState} page={confirmPage} note={note} onNote={setNote} onConfirm={confirmHold} onBack={() => goTo(screen === 'confirm' ? 'manual' : screen)} />

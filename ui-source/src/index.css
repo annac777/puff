@@ -228,10 +228,12 @@ body{padding:24px 24px 24px 24px;box-sizing:border-box}
   --paper: #FFFBF4;
   --paper-line: #EFE7DA;
 }
+/* Dotted paper, not a grid: the grid's lines ran through the text and made it hard to read. */
 .puff-paper {
   background-color: var(--paper);
-  background-image: linear-gradient(var(--paper-line) 1px, transparent 1px), linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
-  background-size: 14px 14px;
+  background-image: radial-gradient(#E8DDCB 1.1px, transparent 1.3px);
+  background-size: 16px 16px;
+  background-position: 8px 8px;
 }
 .puff-mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: .2px; }
 .puff-ink { color: var(--ink); }

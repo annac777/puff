@@ -56,7 +56,7 @@ function Board() {
           <PauseScreen onPause={noop} onTurnOff={noop} onBack={noop} />
         </PuffPanel></Frame>
         <Frame title="Privacy and settings"><PuffPanel screen="controls" onMinimize={noop} onControls={noop}>
-          <ControlsScreen controls={controls} onTiming={noop} onPause={noop} onResume={noop} onTurnOff={noop} onBack={noop} />
+          <ControlsScreen controls={controls} tuck={false} onTuck={noop} onTiming={noop} onPause={noop} onResume={noop} onTurnOff={noop} onBack={noop} />
         </PuffPanel></Frame>
       </div>
 

@@ -28,17 +28,18 @@ test('Puff opens expanded automatically and ignores old collapse messages',()=>{
   assert.equal(requests.some(r=>r.action==='cancel'),false);
 });
 
-test('Puff stays tucked away while it is only watching, and shows itself when it has something to say',()=>{
+test('with "hide until needed" on, Puff tucks away while watching and shows itself when it has something to say',()=>{
   let root,listener,frameListener;
   const posted=[];
   function node(){
     const classes=new Set(),children=[];
-    return {children,dataset:{},style:{},classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),contains:c=>classes.has(c),toggle(c,on){on?classes.add(c):classes.delete(c);}},
+    return {children,dataset:{},style:{setProperty(k,v){this[k]=v;},removeProperty(k){delete this[k];}},classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),contains:c=>classes.has(c),toggle(c,on){on?classes.add(c):classes.delete(c);}},
       appendChild(n){children.push(n);},addEventListener(){},contentWindow:{postMessage:m=>posted.push(m)},querySelector(){return {addEventListener(){}};}};
   }
   const document={getElementById:()=>root,createElement:node,addEventListener(){},documentElement:{appendChild(n){root=n;}}};
   const window={addEventListener(type,fn){if(type==='message')frameListener=fn;}};window.top=window;
-  const chrome={runtime:{id:'fixture',getURL:p=>'chrome-extension://fixture/'+p,onMessage:{addListener(fn){listener=fn;}},sendMessage:async()=>({ok:false})}};
+  const storage={get:(key,cb)=>cb({puffPrefs:{tuck:true}}),set(){}},changes={addListener(){}};
+  const chrome={storage:{local:storage,onChanged:changes},runtime:{id:'fixture',getURL:p=>'chrome-extension://fixture/'+p,onMessage:{addListener(fn){listener=fn;}},sendMessage:async()=>({ok:false})}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../content.js'),'utf8'),{window,document,chrome,setInterval(){},clearInterval(){},Date,Promise});
 
   listener({type:'OFF_RAMP_STATE',state:{enabled:true,blocked:false,mode:'quiet'}});
@@ -61,4 +62,23 @@ test('Puff stays tucked away while it is only watching, and shows itself when it
   const frame=root.children[0];
   frameListener({source:frame.contentWindow,data:{type:'PUFF_FRAME',expanded:false}});
   assert.equal(root.classList.contains('or-tucked'),true);
+});
+
+test('by default Puff stays on the page, including after its panel closes',()=>{
+  let root,listener,frameListener;
+  function node(){
+    const classes=new Set(),children=[];
+    return {children,dataset:{},style:{setProperty(k,v){this[k]=v;},removeProperty(k){delete this[k];}},classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),contains:c=>classes.has(c),toggle(c,on){on?classes.add(c):classes.delete(c);}},
+      appendChild(n){children.push(n);},addEventListener(){},contentWindow:{postMessage(){}},querySelector(){return {addEventListener(){}};}};
+  }
+  const document={getElementById:()=>root,createElement:node,addEventListener(){},documentElement:{appendChild(n){root=n;}}};
+  const window={addEventListener(type,fn){if(type==='message')frameListener=fn;}};window.top=window;
+  const chrome={runtime:{id:'fixture',getURL:p=>'chrome-extension://fixture/'+p,onMessage:{addListener(fn){listener=fn;}},sendMessage:async()=>({ok:false})}};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../content.js'),'utf8'),{window,document,chrome,setInterval(){},clearInterval(){},Date,Promise});
+  listener({type:'OFF_RAMP_STATE',state:{enabled:true,blocked:false,mode:'quiet'}});
+  assert.equal(root.classList.contains('or-tucked'),false);
+  const frame=root.children[0];
+  frameListener({source:frame.contentWindow,data:{type:'PUFF_FRAME',expanded:true}});
+  frameListener({source:frame.contentWindow,data:{type:'PUFF_FRAME',expanded:false}});
+  assert.equal(root.classList.contains('or-tucked'),false,'closing the panel leaves the cloud where it was');
 });

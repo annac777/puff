@@ -219,3 +219,39 @@ export function useDragHandle(onDragged?: (dragged: boolean) => void, onDragging
     },
   }
 }
+
+// ─── One Puff across tabs ─────────────────────────────────────────────────────
+// Every tab runs its own copy of the panel. What is open and which screen it shows live in
+// extension storage, so switching tabs finds Puff exactly as it was left.
+
+export type SharedUi = { expanded: boolean; screen: string }
+
+export async function loadUi(): Promise<SharedUi | null> {
+  if (!inExtension) return null
+  try { return (await chrome.storage.local.get('puffUi')).puffUi ?? null } catch { return null }
+}
+
+export function saveUi(ui: SharedUi): void {
+  if (!inExtension) return
+  try { chrome.storage.local.set({ puffUi: ui }) } catch { /* storage unavailable */ }
+}
+
+export function onUiChange(apply: (ui: SharedUi) => void): () => void {
+  if (!inExtension) return () => {}
+  const listener = (changes: Record<string, { newValue?: SharedUi }>, area: string) => {
+    if (area === 'local' && changes.puffUi?.newValue) apply(changes.puffUi.newValue)
+  }
+  try { chrome.storage.onChanged.addListener(listener) } catch { return () => {} }
+  return () => { try { chrome.storage.onChanged.removeListener(listener) } catch { /* gone */ } }
+}
+
+/** Whether Puff tucks itself away while it has nothing to say. Off by default. */
+export async function getTuck(): Promise<boolean> {
+  if (!inExtension) return false
+  try { return !!(await chrome.storage.local.get('puffPrefs')).puffPrefs?.tuck } catch { return false }
+}
+
+export async function setTuck(tuck: boolean): Promise<void> {
+  if (!inExtension) return
+  try { await chrome.storage.local.set({ puffPrefs: { tuck } }) } catch { /* storage unavailable */ }
+}

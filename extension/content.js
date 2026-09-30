@@ -7,43 +7,69 @@
   root.classList.add("or-hidden");
   document.documentElement.appendChild(root);
 
-  // The widget is pinned to a corner by default; once dragged it keeps an explicit position.
+  // Placement is anchored at the bottom-right corner, where the cloud sits. The frame grows up and
+  // to the left as the panel opens or changes size, so the cloud itself never moves. (Anchoring at
+  // the top-left made it jump whenever the panel changed height.)
   let dragOrigin = null;
-  // Most survey respondents wanted a companion that stays hidden and appears only when it has
-  // something to say. So the cloud is tucked away while Puff is merely watching, and shows itself
-  // when it invites a break, while a place is held, or when someone opens it from the toolbar.
+  // Staying out of sight until there is something to say is an option, not the default: in use,
+  // a cloud that vanished whenever the panel closed read as a bug.
   let summoned = false;
+  let prefs = { tuck: false };
   function syncTuck() {
     const watching = ["quiet", "considering"].includes(latestState?.mode);
-    root.classList.toggle("or-tucked", watching && !summoned && !root.classList.contains("or-open"));
+    root.classList.toggle("or-tucked", prefs.tuck && watching && !summoned && !root.classList.contains("or-open"));
   }
   function askFrameToOpen() {
     try { panelFrame?.contentWindow?.postMessage({ type: "PUFF_OPEN" }, "*"); } catch {}
   }
-  function placeAt(left, top) {
-    const maxLeft = Math.max(0, window.innerWidth - root.offsetWidth);
-    const maxTop = Math.max(0, window.innerHeight - root.offsetHeight);
-    root.style.left = Math.min(Math.max(0, left), maxLeft) + "px";
-    root.style.top = Math.min(Math.max(0, top), maxTop) + "px";
-    root.style.right = "auto";
-    root.style.bottom = "auto";
+  // Where the person put the cloud. Only a drag changes it. When the panel is taller or wider than
+  // the room above and to the left of the cloud, the panel shrinks and scrolls; the cloud never
+  // moves to make room. (Moving it to fit was the jump: it went down on open and stayed there.)
+  const CLOUD = 152, PANEL_W = 384, PANEL_H = 700, COMPACT_H = 440, MARGIN = 8;
+  let anchor = null;
+  function layout() {
+    const right = anchor ? Math.min(Math.max(0, anchor.right), Math.max(0, window.innerWidth - CLOUD)) : 26;
+    const bottom = anchor ? Math.min(Math.max(0, anchor.bottom), Math.max(0, window.innerHeight - CLOUD)) : 16;
+    root.style.right = right + "px";
+    root.style.bottom = bottom + "px";
+    root.style.left = "auto";
+    root.style.top = "auto";
+    if (root.classList.contains("or-open")) {
+      const wanted = root.classList.contains("or-compact") ? COMPACT_H : PANEL_H;
+      root.style.setProperty("height", Math.max(CLOUD, Math.min(wanted, window.innerHeight - bottom - MARGIN)) + "px", "important");
+      root.style.setProperty("width", Math.max(CLOUD, Math.min(PANEL_W, window.innerWidth - right - MARGIN)) + "px", "important");
+    } else {
+      root.style.removeProperty("height");
+      root.style.removeProperty("width");
+    }
   }
-  function clampIntoView() {
-    if (!root.style.left) return;
-    placeAt(parseFloat(root.style.left), parseFloat(root.style.top));
+  function placeAt(right, bottom) {
+    anchor = { right, bottom };
+    layout();
   }
+  function clampIntoView() { layout(); }
   function savePlacement() {
-    try { chrome.storage?.local.set({ puffPlacement: { left: root.style.left, top: root.style.top } }); } catch {}
+    try { if (anchor) chrome.storage?.local.set({ puffPlacement: { right: anchor.right + "px", bottom: anchor.bottom + "px" } }); } catch {}
+  }
+  function applyPlacement(at) {
+    // Older builds saved a top-left position; that cannot be anchored, so it falls back to the corner.
+    if (at?.right && at.right !== "auto") placeAt(parseFloat(at.right), parseFloat(at.bottom));
   }
   function restorePlacement() {
-    try {
-      chrome.storage?.local.get("puffPlacement", data => {
-        const at = data?.puffPlacement;
-        if (at?.left) placeAt(parseFloat(at.left), parseFloat(at.top));
-      });
-    } catch {}
+    try { chrome.storage?.local.get("puffPlacement", data => applyPlacement(data?.puffPlacement)); } catch {}
   }
   window.addEventListener("resize", clampIntoView);
+  // One Puff across tabs: every tab has its own copy, so a move or a preference in one is
+  // mirrored in the others, and a tab coming back into view picks up the latest.
+  try {
+    chrome.storage?.local.get("puffPrefs", data => { prefs = { ...prefs, ...(data?.puffPrefs || {}) }; syncTuck(); });
+    chrome.storage?.onChanged?.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes.puffPlacement && !dragOrigin) applyPlacement(changes.puffPlacement.newValue);
+      if (changes.puffPrefs) { prefs = { ...prefs, ...(changes.puffPrefs.newValue || {}) }; syncTuck(); }
+    });
+  } catch {}
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) restorePlacement(); });
 
   function disconnect() {
     clearInterval(activityTimer);
@@ -130,7 +156,7 @@
     if (data?.type === "PUFF_DRAG_START") dragOrigin = root.getBoundingClientRect();
     if (data?.type === "PUFF_DRAG_MOVE" && dragOrigin) {
       root.classList.add("or-dragging");
-      placeAt(dragOrigin.left + data.dx, dragOrigin.top + data.dy);
+      placeAt(window.innerWidth - (dragOrigin.right + data.dx), window.innerHeight - (dragOrigin.bottom + data.dy));
     }
     if (data?.type === "PUFF_DRAG_END") {
       dragOrigin = null;
