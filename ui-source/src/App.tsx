@@ -453,7 +453,7 @@ function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, control
   return (
     <div className="px-4 pt-3 pb-4 flex flex-col" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
       <div className="flex items-center gap-2">
-        <div className="w-[104px] h-[88px] flex-shrink-0" onMouseEnter={() => setPetted(true)} onMouseLeave={() => setPetted(false)}>
+        <div className="w-[100px] h-[84px] flex-shrink-0" onMouseEnter={() => setPetted(true)} onMouseLeave={() => setPetted(false)}>
           <Cloud mood={mood} />
         </div>
         <div className="min-w-0">
@@ -473,25 +473,23 @@ function HomeScreen({ workState, workSeconds, todaySeconds, breaksToday, control
         </div>
       )}
 
-      {/* Stickers fit what they say instead of stretching across the window. */}
-      <div className="flex gap-3 mt-5">
-        <Sticker bg="#DCEFFA" tilt={-2} className="min-w-[96px]">
-          <div className="pl-2.5 pr-4 pt-2.5 pb-1.5">
+      {/* Every row spans the window, so nothing leaves an empty right side. */}
+      <div className="grid grid-cols-2 gap-3 mt-5">
+        <Sticker bg="#DCEFFA" tilt={-2}>
+          <div className="px-2.5 pt-2.5 pb-1.5">
             <Label>today</Label>
             <p className="text-[16px] font-extrabold puff-ink tabular-nums">{heroTime(todaySeconds)}</p>
           </div>
         </Sticker>
-        <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={2} className="min-w-[80px]">
-          <div className="pl-2.5 pr-4 pt-2.5 pb-1.5">
+        <Sticker bg="#FCE3EA" tape="rgba(205,235,214,.9)" tilt={2}>
+          <div className="px-2.5 pt-2.5 pb-1.5">
             <Label>breaks</Label>
             <p className="text-[16px] font-extrabold puff-ink tabular-nums">{breaksToday} ☕</p>
           </div>
         </Sticker>
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
-        <button onClick={onTakeBreak} className="puff-btn bg-[#FFD66B] text-[12.5px] px-3.5 h-9">take a break</button>
-      </div>
+      <button onClick={onTakeBreak} className="puff-btn bg-[#FFD66B] text-[12.5px] w-full h-9 mt-4">take a break</button>
     </div>
   )
 }
