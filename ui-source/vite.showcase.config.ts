@@ -12,6 +12,11 @@ export default defineConfig({
   build: {
     outDir: process.env.SHOWCASE_OUT || 'showcase-dist',
     emptyOutDir: true,
-    rollupOptions: { input: path.resolve(import.meta.dirname, 'showcase.html') },
+    rollupOptions: {
+      input: {
+        showcase: path.resolve(import.meta.dirname, 'showcase.html'),
+        exporter: path.resolve(import.meta.dirname, 'exporter.html'),
+      },
+    },
   },
 })
