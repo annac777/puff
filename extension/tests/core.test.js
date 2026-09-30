@@ -9,7 +9,7 @@ test("Later never escalates to an intrusive checkpoint",()=>{const s=core.applyR
 test("two dismissals extend rather than escalate interruption",()=>{let s=core.applyResponse(ready(),"dismiss",100000);s=core.applyResponse(s,"dismiss",110000);assert.equal(s.cooldownUntil,110000+60*60000);});
 test("daily cap suppresses automatic invitation",()=>{assert.equal(core.evaluate(ready({dailyInvitations:4}),100000).mode,"quiet");});
 test("busy and protected pages suppress invitations",()=>{for(const fields of [{busyUntil:110000},{blocked:true},{enabled:false}])assert.equal(core.evaluate(ready(fields),100000).mode,"quiet");});
-test("break requires confirmed intent and preserves an executable anchor",()=>{const initial=ready({currentTabTitle:"Draft",currentTabUrl:"https://example.com/",currentTabId:17});assert.notEqual(core.applyResponse(initial,"take_break",100000).mode,"on_break");const s=core.applyResponse(initial,"take_break",100000,{note:"Check tablet layout"});assert.equal(s.checkpoint.tabId,17);assert.equal(s.checkpoint.note,"Check tablet layout");assert.equal(s.mode,"on_break");});
+test("a break keeps an executable anchor, and the next step is optional",()=>{const initial=ready({currentTabTitle:"Draft",currentTabUrl:"https://example.com/",currentTabId:17});const bare=core.applyResponse(initial,"take_break",100000);assert.equal(bare.mode,"on_break");assert.equal(bare.checkpoint.note,"");assert.equal(bare.checkpoint.title,"Draft");const s=core.applyResponse(initial,"take_break",100000,{note:"Check tablet layout"});assert.equal(s.checkpoint.tabId,17);assert.equal(s.checkpoint.note,"Check tablet layout");assert.equal(s.mode,"on_break");});
 test("resume is followed by an explicit fresh session",()=>{const s=core.applyResponse(ready(),"continue",100000);assert.equal(s.activeSeconds,0);assert.equal(s.sessionInvited,false);});
 test("sanitizes URL secrets and rejects executable schemes",()=>{assert.equal(core.safeUrl("https://a.test/path?token=secret#private"),"https://a.test/path");assert.equal(core.safeUrl("javascript:alert(1)"),"");assert.equal(core.protectedUrl("https://a.test/checkout"),true);});
 test("activity aggregation stores counts only and rejects future timestamps",()=>{const s=core.mergeActivity(core.initialState(1),{clicks:2,keypresses:8,scrollEvents:1,lastActivityAt:999999,keys:"private"},100);assert.equal(s.keypresses,8);assert.equal("keys" in s,false);assert.equal(s.lastActivityAt,0);});
@@ -129,4 +129,49 @@ test("a pause goes stale rather than firing hours later",()=>{
   let later=at+30000;
   for(let sec=0;sec<5*60;sec++){later+=1000;s=core.mergeActivity({...s,lastActivityAt:later},{keypresses:4,lastActivityAt:later},later);}
   assert.notEqual(s.mode,"gentle_nudge","an expired pause cannot trigger an invitation");
+});
+
+// ── Round-one research: completions first, never while reading ───────────────
+test("finishing something is an opening straight away, without waiting for silence",()=>{
+  // Saved a second ago; still active, so no pause has happened yet.
+  const s=core.evaluate(ready({lastActivityAt:99000,lastBoundaryAt:99000}),100000);
+  assert.equal(s.mode,"gentle_nudge");
+  assert.match(s.reason,/finished/);
+});
+test("a completion does not interrupt someone who has gone straight back to typing",()=>{
+  const s=core.evaluate(ready({lastBoundaryAt:95000,lastKeyAt:99500,lastActivityAt:99500}),100000);
+  assert.notEqual(s.mode,"gentle_nudge");
+});
+test("quiet after scrolling is reading, and Puff waits it out",()=>{
+  // Typed at 60s, scrolled until 85s, silent since: to a timer that is a pause; to a reader it is not.
+  let s=core.evaluate(ready({lastKeyAt:60000,lastScrollAt:85000,lastActivityAt:85000}),100000);
+  assert.equal(s.reading,true);
+  assert.notEqual(s.mode,"gentle_nudge");
+  assert.equal(s.reason,"Waiting while you read");
+  // Quiet after typing, not scrolling, is a seam in the work and still counts.
+  s=core.evaluate(ready({lastKeyAt:85000,lastScrollAt:60000,lastActivityAt:85000}),100000);
+  assert.equal(s.mode,"gentle_nudge");
+});
+test("once the reading has gone quiet for a while, the pause counts again",()=>{
+  const s=core.evaluate(ready({lastKeyAt:10000,lastScrollAt:65000,lastActivityAt:65000}),100000);
+  assert.equal(s.reading,false);
+  assert.equal(s.mode,"gentle_nudge");
+});
+test("Pause holds every invitation until it runs out",()=>{
+  let s=core.pauseUntil(ready(),100000+3600000,100000);
+  assert.equal(core.evaluate(s,100000).mode,"quiet");
+  assert.equal(core.evaluate(s,100000).reason,"Paused");
+  s=core.evaluate({...s,lastEvaluatedAt:100000+3600001,lastActivityAt:100000+3600001-20000},100000+3600001);
+  assert.equal(s.mode,"gentle_nudge","free to invite again once the pause is over");
+  assert.equal(core.pauseUntil(ready({busyUntil:500000}),0,100000).busyUntil,0,"lifting a pause");
+});
+test("a chosen break timing replaces what was learned and ignores odd values",()=>{
+  let s=core.setBreakTiming(ready({learnedThreshold:4000}),45);
+  assert.equal(s.thresholdSeconds,2700);
+  assert.equal(s.learnedThreshold,0);
+  assert.equal(core.setBreakTiming(s,7).thresholdSeconds,2700);
+});
+test("video calls on Teams and Webex are protected like Meet and Zoom",()=>{
+  for(const url of ["https://teams.microsoft.com/l/meetup","https://acme.webex.com/meet/x","https://meet.google.com/abc"])assert.equal(core.protectedUrl(url),true,url);
+  assert.equal(core.protectedUrl("https://docs.google.com/document/d/1"),false);
 });

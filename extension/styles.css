@@ -49,3 +49,4 @@
 #off-ramp-root.or-dragging{transition:none!important}
 #off-ramp-root.or-dragging .or-panel-frame{pointer-events:none!important}
 #off-ramp-root.or-expanded.or-tucked{opacity:0!important;pointer-events:none!important;transform:translateY(8px)!important}
+#off-ramp-root.or-expanded.or-open.or-compact{height:min(330px,calc(100vh - 16px))!important}

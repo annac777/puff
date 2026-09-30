@@ -17,6 +17,8 @@ export type ActivityState = {
   enabled: boolean
   mode: string
   sessionSeconds: number
+  busyUntil: number
+  thresholdSeconds: number
   rhythm: { intensity: number; scatter: number; settling: number; windows: number }
   checkpoint: Hold | null
   reason: string
@@ -57,6 +59,32 @@ export async function resetActivity(): Promise<void> {
 /** Records that the invitation was waved off, so the cooldown and the threshold both learn. */
 export async function declineBreak(action: 'later' | 'dismiss' = 'later'): Promise<void> {
   await send({ type: 'USER_RESPONSE', action })
+}
+
+/** Holds every invitation until a moment in time. 0 lifts the pause. */
+export async function pauseUntil(until: number): Promise<void> {
+  await send({ type: 'SET_PAUSE', until })
+}
+
+/** Turns Puff off entirely. The toolbar button turns it back on. */
+export async function setPuffEnabled(enabled: boolean): Promise<void> {
+  await send({ type: 'SET_ENABLED', enabled })
+}
+
+/** The break timing someone chose. It replaces what Puff had learned so far. */
+export const TIMING_MINUTES = [20, 30, 45, 60] as const
+export async function setBreakTiming(minutes: number): Promise<void> {
+  await send({ type: 'SET_TIMING', minutes })
+}
+
+export function endOfToday(now = new Date()): number {
+  const end = new Date(now)
+  end.setHours(23, 59, 59, 999)
+  return end.getTime()
+}
+
+export function clockTime(at: number): string {
+  return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 /** Focuses the saved tab, or opens it again when the original tab is gone. */
@@ -142,6 +170,10 @@ export function useDragHandle(onDragged?: (dragged: boolean) => void) {
   return {
     onPointerDown(e: React.PointerEvent) {
       if (!inExtension || e.button !== 0) return
+      // A button inside the handle (minimise, settings) must get its own click. Capturing the
+      // pointer here would retarget that click to the handle and swallow it.
+      const button = (e.target as HTMLElement).closest?.('button')
+      if (button && button !== e.currentTarget) return
       state.current = { x: e.screenX, y: e.screenY, id: e.pointerId, moved: false }
       onDragged?.(false)
       try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* no capture */ }

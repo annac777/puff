@@ -12,7 +12,12 @@ function isPanel(sender){return sender.url?.startsWith(chrome.runtime.getURL("")
 async function restoreTab(anchor,fileUrl){const url=OffRampCore.safeUrl(fileUrl||anchor?.url);if(!url)throw new Error("No saved browser link. Use the open Figma plugin to restore.");let tab;try{if(anchor?.tabId)tab=await chrome.tabs.get(anchor.tabId);}catch{}if(tab&&OffRampCore.safeUrl(tab.url)!==url)tab=null;if(!tab)tab=(await chrome.tabs.query({})).find(t=>OffRampCore.safeUrl(t.url)===url);if(tab){await chrome.windows.update(tab.windowId,{focused:true});await chrome.tabs.update(tab.id,{active:true});}else await chrome.tabs.create({url});}
 async function start(){chrome.idle.setDetectionInterval(15);await chrome.alarms.create("evaluate-off-ramp",{periodInMinutes:0.5});const [tab]=await chrome.tabs.query({active:true,lastFocusedWindow:true});const state=await tabContext(await getState(),tab);state.idleState=await chrome.idle.queryState(15);await saveState(OffRampCore.evaluate(state));}
 chrome.runtime.onInstalled.addListener(()=>serialize(start));chrome.runtime.onStartup.addListener(()=>serialize(start));
-chrome.action?.onClicked?.addListener(tab=>{if(tab.id)chrome.tabs.sendMessage(tab.id,{type:"OFF_RAMP_EXPAND"},{frameId:0}).catch(()=>{});});
+// The toolbar button is the way in while Puff is tucked away, and the way back after turning it off.
+chrome.action?.onClicked?.addListener(tab=>serialize(async()=>{
+  let state=await getState();
+  if(!state.enabled||state.busyUntil>Date.now()){state={...state,enabled:true,busyUntil:0};await saveState(state);}
+  if(tab.id)await chrome.tabs.sendMessage(tab.id,{type:"OFF_RAMP_EXPAND"},{frameId:0}).catch(()=>{});
+}));
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   const perform=async()=>{
     if(message.type==="OPEN_PANEL"){
@@ -37,7 +42,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
         const anchor={title:(sender.tab.title||"").slice(0,200),url:sender.tab.url,tabId:sender.tab.id};
         let state=await tabContext(await getState(),sender.tab);
         state={...state,currentTabTitle:anchor.title,currentTabUrl:OffRampCore.safeUrl(anchor.url)};
-        state=forget(OffRampCore.applyResponse(state,"take_break",Date.now(),{note:String(message.note||"").trim()||anchor.title}));
+        state=forget(OffRampCore.applyResponse(state,"take_break",Date.now(),{note:String(message.note||"").trim()}));
         await saveState(state);
         return {ok:true,hold:state.checkpoint};
       });
@@ -55,7 +60,9 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
         if(message.action==="take_break"&&isPanel(sender)&&message.anchor){state={...state,currentTabTitle:String(message.anchor.title||"").slice(0,200),currentTabUrl:OffRampCore.safeUrl(message.anchor.url),currentTabId:message.anchor.tabId??null};}
         state=OffRampCore.applyResponse(state,message.action,Date.now(),{note:message.note});
       }else if(message.type==="SET_DEMO_MODE"&&isPanel(sender)){state={...state,demoMode:!!message.enabled,thresholdSeconds:message.enabled?30:1800,activeSeconds:0,sessionInvited:false,lastEvaluatedAt:Date.now()};}
-      else if(message.type==="SET_ENABLED"&&isPanel(sender)){state.enabled=!!message.enabled;}
+      else if(message.type==="SET_ENABLED"&&isPanel(sender)){state.enabled=!!message.enabled;if(!state.enabled)state.mode="quiet";}
+      else if(message.type==="SET_PAUSE"&&isPanel(sender)){state=OffRampCore.pauseUntil(state,message.until);}
+      else if(message.type==="SET_TIMING"&&isPanel(sender)){state=OffRampCore.setBreakTiming(state,message.minutes);}
       else if(message.type==="FORCE_MODE"&&isPanel(sender)&&state.demoMode&&OffRampCore.MODES.includes(message.mode)){state.mode=message.mode;}
       else if(message.type==="GET_STATE")state=OffRampCore.evaluate(state);
       await saveState(state);return {ok:true,state,intervention:OffRampCore.interventionFor(state)};

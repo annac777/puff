@@ -36,7 +36,7 @@
   }
   function initialState(now=Date.now()){return {version:2,sessionStartedAt:now,sessionSeconds:0,lastEvaluatedAt:now,activeSeconds:0,
     idleState:"unknown",idleSince:null,clicks:0,keypresses:0,scrollEvents:0,tabSwitches:0,currentTabTitle:"",currentTabUrl:"",currentTabId:null,
-    lastActivityAt:0,lastKeyAt:0,lastTabChangeAt:0,designLastChangeAt:0,designConnected:false,recentTyping:false,possibleBreakpoint:false,
+    lastActivityAt:0,lastKeyAt:0,lastScrollAt:0,lastBoundaryAt:0,lastTabChangeAt:0,designLastChangeAt:0,designConnected:false,recentTyping:false,possibleBreakpoint:false,
     mode:"quiet",laterCount:0,cooldownUntil:0,responseHistory:[],checkpoint:null,demoMode:false,thresholdSeconds:1800,
     windows:[],rhythm:{intensity:0,scatter:0,settling:0,windows:0},learnedThreshold:0,lastAction:"",lastActionAt:0,pausedAt:0,
     dailyInvitations:0,day:day(now),sessionInvited:false,enabled:true,blocked:false,busyUntil:0,needScore:0,opportunityScore:0,reason:"Waiting for activity"};}
@@ -71,18 +71,24 @@
     // A pause still counts for a short while afterwards, so stepping away from an editor and
     // coming back lands on an invitation instead of missing it.
     const pause=next.pausedAt>0&&now-next.pausedAt<=(next.demoMode?10_000:120_000);
+    // Survey round one: the least disruptive moment is just after saving, submitting or sending
+    // something, and the most disruptive is while someone is reading. Reading makes no input, so
+    // silence alone cannot tell it from stopping. A completion is taken as an opening straight away;
+    // a quiet spell that follows scrolling rather than typing is treated as reading and waited out.
+    const boundary=next.lastBoundaryAt>0&&now-next.lastBoundaryAt<=(next.demoMode?10_000:60_000);
+    next.reading=browserPause&&next.lastScrollAt>next.lastKeyAt&&now-next.lastScrollAt<=(next.demoMode?5_000:30_000);
     // Someone visibly winding down is offered a break sooner; someone still at full tilt waits.
     const base=next.learnedThreshold||next.thresholdSeconds;
     next.effectiveThreshold=Math.round(clamp(base*(1-0.25*next.rhythm.settling),next.thresholdSeconds*0.5,next.thresholdSeconds*3));
     next.needScore=Math.min(1,next.activeSeconds/next.effectiveThreshold);
-    next.opportunityScore=pause&&!next.recentTyping?1:0;
+    next.opportunityScore=(boundary||(pause&&!next.reading))&&!next.recentTyping?1:0;
     next.possibleBreakpoint=next.needScore>=1&&next.opportunityScore>=1;
     const blocked=!next.enabled||next.blocked||next.busyUntil>now||next.idleState!=="active";
-    next.reason=!next.enabled?"Monitoring paused":next.blocked?"Protected or full-screen page":next.busyUntil>now?"Manual busy window":next.idleState!=="active"?"Browser not active":
-      now<next.cooldownUntil?"Respecting your cooldown":next.recentTyping?"Waiting while you type":next.needScore<1?"Focus threshold not reached":!pause?"Waiting for a natural pause":"Sustained work followed by a pause";
+    next.reason=!next.enabled?"Monitoring paused":next.blocked?"Protected or full-screen page":next.busyUntil>now?"Paused":next.idleState!=="active"?"Browser not active":
+      now<next.cooldownUntil?"Respecting your cooldown":next.recentTyping?"Waiting while you type":next.reading?"Waiting while you read":next.needScore<1?"Focus threshold not reached":!pause&&!boundary?"Waiting for a natural pause":boundary?"Sustained work, then something finished":"Sustained work followed by a pause";
     if(["checkpoint","on_break","resume"].includes(next.mode))return next;
     if(blocked||now<next.cooldownUntil||next.dailyInvitations>=4){next.mode="quiet";return next;}
-    if(next.mode==="gentle_nudge"&&!pause){next.mode="quiet";next.cooldownUntil=now+60_000;return next;}
+    if(next.mode==="gentle_nudge"&&!pause&&!boundary){next.mode="quiet";next.cooldownUntil=now+60_000;return next;}
     if(next.mode==="gentle_nudge")return next;
     if(next.sessionInvited){next.mode="quiet";return next;}
     if(next.needScore<1){next.mode="quiet";return next;}
@@ -98,7 +104,7 @@
       next[key]+=amount;
       if(current)current[key]+=amount;
     }
-    for(const key of ["lastActivityAt","lastKeyAt"])if(Number.isFinite(delta[key])&&delta[key]<=now&&delta[key]>0)next[key]=Math.max(next[key],delta[key]);
+    for(const key of ["lastActivityAt","lastKeyAt","lastScrollAt","lastBoundaryAt"])if(Number.isFinite(delta[key])&&delta[key]<=now&&delta[key]>0)next[key]=Math.max(next[key],delta[key]);
     return evaluate(next,now);
   }
   /**
@@ -130,19 +136,31 @@
       next.cooldownUntil=now+minutes*60_000;
     }else if(action==="save_place"){next.mode="checkpoint";}
     else if(action==="take_break"){
+      // Interviews: a heavy checkpoint on every break is itself a reason not to take one, so the
+      // next step is optional and an empty one is fine.
       const note=String(fields.note||"").trim().slice(0,500);
-      if(!note)return {...next,error:"Confirm a next step before saving."};
       next.checkpoint={title:state.currentTabTitle,url:state.currentTabUrl,tabId:state.currentTabId,note,savedAt:now};
       next.mode="on_break";next.breakStartedAt=now;
     }else if(action==="resume"){next.mode="resume";}
     else if(action==="continue"){next.mode="quiet";next.activeSeconds=0;next.sessionSeconds=0;next.sessionStartedAt=now;next.sessionInvited=false;next.laterCount=0;next.cooldownUntil=0;next.windows=[];next.rhythm=rhythmOf([]);}
     return next;
   }
+  /** Pause invitations until a moment in time; 0 lifts the pause. */
+  function pauseUntil(state,until,now=Date.now()){
+    const at=Number(until)||0;
+    return {...state,busyUntil:at>now?at:0,mode:at>now&&["gentle_nudge","considering"].includes(state.mode)?"quiet":state.mode};
+  }
+  const TIMING_MINUTES=[20,30,45,60];
+  /** An explicit preference replaces whatever Puff had learned from answers so far. */
+  function setBreakTiming(state,minutes){
+    if(!TIMING_MINUTES.includes(Number(minutes)))return state;
+    return {...state,thresholdSeconds:Number(minutes)*60,learnedThreshold:0,demoMode:false};
+  }
   function interventionFor(state){
     const copy={quiet:["Your place, held gently","Open Off-Ramp whenever you want to save your place."],considering:["Waiting for a pause","You have been working for a while. I will wait."],gentle_nudge:["A place to pause","Save your place before stepping away?"],checkpoint:["Keep your intention","Confirm what you want to do when you return."],on_break:["Your place is saved","You can let go for a moment."],resume:["Pick up your thread","Return to the saved page and your next step."]}[state.mode];
     return {mode:state.mode,title:copy[0],message:copy[1],reason:state.reason};
   }
   function safeUrl(value){try{const u=new URL(value);if(!["http:","https:"].includes(u.protocol))return "";u.search="";u.hash="";u.username="";u.password="";return u.href;}catch{return "";}}
-  function protectedUrl(value){try{const u=new URL(value);return /(^|\.)(meet.google.com|zoom.us|paypal.com|stripe.com)$/.test(u.hostname)||/checkout|payment|banking|exam|password/i.test(u.pathname);}catch{return true;}}
-  return {MODES,initialState,evaluate,mergeActivity,recordTabSwitch,applyResponse,interventionFor,safeUrl,protectedUrl};
+  function protectedUrl(value){try{const u=new URL(value);return /(^|\.)(meet\.google\.com|zoom\.us|teams\.microsoft\.com|teams\.live\.com|webex\.com|whereby\.com|around\.co|paypal\.com|stripe\.com)$/.test(u.hostname)||/checkout|payment|banking|exam|password/i.test(u.pathname);}catch{return true;}}
+  return {MODES,TIMING_MINUTES,initialState,evaluate,mergeActivity,recordTabSwitch,applyResponse,pauseUntil,setBreakTiming,interventionFor,safeUrl,protectedUrl};
 });

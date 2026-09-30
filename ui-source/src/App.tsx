@@ -1,9 +1,10 @@
 // v2
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { inExtension, activityState, currentPage, saveHold, restoreTab, resetActivity, declineBreak,
+  pauseUntil, setPuffEnabled, setBreakTiming, TIMING_MINUTES, endOfToday, clockTime,
   sourceLabel, pageLabel, formatDuration, formatAway, workStateFor, useDragHandle, type Hold } from './puff-bridge'
 
-type Screen    = 'proactive' | 'manual' | 'confirm' | 'on_break' | 'resume'
+type Screen    = 'proactive' | 'manual' | 'confirm' | 'on_break' | 'resume' | 'pause' | 'controls'
 type BreakMode = 'agent' | 'save_only' | null
 type WorkState = 'fresh' | 'focused' | 'tired' | 'exhausted' | 'critical'
 
@@ -21,7 +22,12 @@ const DEMO_SCREENS: { id: Screen; label: string }[] = [
   { id: 'confirm',   label: 'Confirm' },
   { id: 'on_break',  label: 'Away' },
   { id: 'resume',    label: 'Resume' },
+  { id: 'pause',     label: 'Pause' },
+  { id: 'controls',  label: 'Privacy' },
 ]
+
+/** Settings the panel reflects back to the person. */
+type Controls = { enabled: boolean; busyUntil: number; thresholdSeconds: number }
 
 /** Pill colour follows the measured work state, so time and colour can never disagree. */
 const PILL: Record<WorkState, { bg: string; border: string; text: string; dot: string }> = {
@@ -532,40 +538,117 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
-function ProactiveScreen({ workState, workDuration, onTakeBreak, onDismiss }: {
-  workState: WorkState; workDuration: string; onTakeBreak: () => void; onDismiss: () => void
+// Research round one: people ignore reminders that arrive mid-focus and resent ones that nag, so
+// the suggestion is a small card that is easy to wave off. No escalation, no guilt at long stretches.
+function ProactiveScreen({ workState, workDuration, onTakeBreak, onLater, onPause }: {
+  workState: WorkState; workDuration: string; onTakeBreak: () => void; onLater: () => void; onPause: () => void
 }) {
-  const isCritical = workState === 'critical'
   return (
-    <div className="px-4 py-5 flex flex-col items-center gap-5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
-      <div className="relative w-28 h-[88px]"
-        style={{ animation: `cloudFloat ${FLOAT_DUR[workState]} ease-in-out infinite` }}>
-        <PuffCloud workState={workState} screen="proactive" />
-      </div>
-
-      <div className="text-center space-y-1.5 px-1">
-        <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-1 border"
-          style={{ background: PILL[workState].bg, borderColor: PILL[workState].border }}>
-          <div className="w-1.5 h-1.5 rounded-full"
-            style={{ background: PILL[workState].dot, animation: 'glowPulse 1.2s ease-in-out infinite' }} />
-          <span className="text-[11px] font-bold" style={{ color: PILL[workState].text }}>
-            Working for {workDuration}
-          </span>
+    <div className="px-4 py-4 flex flex-col gap-3.5" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="flex items-center gap-3">
+        <div className="w-14 h-11 flex-shrink-0" style={{ animation: `cloudFloat ${FLOAT_DUR[workState]} ease-in-out infinite` }}>
+          <PuffCloud workState={workState} screen="proactive" small />
         </div>
-        <h2 className="text-[18px] font-semibold text-[#1A1A1A] tracking-tight leading-snug">
-          {isCritical ? "You really need a break." : "Wanna take a break?"}
-        </h2>
-        <p className="text-[12.5px] text-[#7A8494] leading-relaxed">
-          {isCritical
-            ? "That's a long stretch. Let me hold your place before you lose the thread."
-            : "I'll remember where you are and the question you haven't answered yet."}
-        </p>
+        <div className="min-w-0 space-y-0.5">
+          <h2 className="text-[15.5px] font-semibold text-[#1A1A1A] tracking-tight leading-snug">Good moment for a break?</h2>
+          <p className="text-[12px] text-[#7A8494] leading-snug">You've been focused for {workDuration}.</p>
+        </div>
       </div>
+      <PrimaryBtn onClick={onTakeBreak}>Take a break</PrimaryBtn>
+      <div className="grid grid-cols-2 gap-2">
+        <SecondaryBtn onClick={onLater}>Later</SecondaryBtn>
+        <SecondaryBtn onClick={onPause}>Pause</SecondaryBtn>
+      </div>
+    </div>
+  )
+}
 
-      <div className="w-full flex flex-col gap-2">
-        <PrimaryBtn onClick={onTakeBreak}>{isCritical ? "Take a break now" : "Take a break"}</PrimaryBtn>
-        <SecondaryBtn onClick={onDismiss}>Not now</SecondaryBtn>
+// ─── State 3: Pause ───────────────────────────────────────────────────────────
+
+function PauseScreen({ onPause, onTurnOff, onBack }: {
+  onPause: (until: number) => void; onTurnOff: () => void; onBack: () => void
+}) {
+  const option = 'w-full text-left px-3.5 py-3 rounded-xl bg-white border border-[#E0DAD4] hover:border-[#7EC8E3] hover:bg-[#F5FBFE] transition-colors'
+  return (
+    <div className="px-4 py-4 flex flex-col gap-3" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <div className="space-y-0.5">
+        <h2 className="text-[15.5px] font-semibold text-[#1A1A1A] tracking-tight">Pause Puff</h2>
+        <p className="text-[12px] text-[#7A8494] leading-snug">For meetings, deadlines, or when you just want to keep going.</p>
       </div>
+      <button className={option} onClick={() => onPause(Date.now() + 60 * 60 * 1000)}>
+        <span className="block text-[13px] font-semibold text-[#374151]">For 1 hour</span>
+      </button>
+      <button className={option} onClick={() => onPause(endOfToday())}>
+        <span className="block text-[13px] font-semibold text-[#374151]">For the rest of today</span>
+      </button>
+      <button className={option} onClick={onTurnOff}>
+        <span className="block text-[13px] font-semibold text-[#374151]">Turn Puff off</span>
+        <span className="block text-[11.5px] text-[#7A8494] mt-0.5">Click the Puff icon in your toolbar to turn it back on.</span>
+      </button>
+      <div className="flex justify-center pt-1"><GhostBtn onClick={onBack}>Back</GhostBtn></div>
+    </div>
+  )
+}
+
+// ─── State 6: Privacy and controls ────────────────────────────────────────────
+
+function ControlsScreen({ controls, onTiming, onPause, onResume, onTurnOff, onBack }: {
+  controls: Controls
+  onTiming: (minutes: number) => void
+  onPause: (until: number) => void
+  onResume: () => void
+  onTurnOff: () => void
+  onBack: () => void
+}) {
+  const paused = controls.busyUntil > Date.now()
+  const minutes = Math.round(controls.thresholdSeconds / 60)
+  const label = 'text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest'
+  const chip = (on: boolean) => `h-8 rounded-lg text-[12px] font-semibold border transition-colors ${on
+    ? 'bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]' : 'bg-white text-[#7A8494] border-[#E0DAD4] hover:border-[#7EC8E3]'}`
+  return (
+    <div className="px-4 py-4 flex flex-col gap-4" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
+      <section className="space-y-1.5">
+        <p className={label}>What Puff notices</p>
+        <ul className="text-[12px] text-[#374151] leading-relaxed space-y-0.5">
+          <li>How long you've been active at your computer</li>
+          <li>How often you click, type and scroll — counts only</li>
+          <li>When you switch tabs, save, or submit something</li>
+        </ul>
+      </section>
+      <section className="space-y-1.5">
+        <p className={label}>What it never reads</p>
+        <ul className="text-[12px] text-[#374151] leading-relaxed space-y-0.5">
+          <li>What you type, or what's on a page</li>
+          <li>Tab titles and links — except the one page you choose to save for a break</li>
+        </ul>
+        <p className="text-[11.5px] text-[#7A8494] leading-snug">Everything stays on this computer. Puff also stays quiet on video calls, payment pages and in full screen.</p>
+      </section>
+      <section className="space-y-1.5">
+        <p className={label}>Suggest a break after about</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {TIMING_MINUTES.map(m => (
+            <button key={m} className={chip(m === minutes)} onClick={() => onTiming(m)}>{m} min</button>
+          ))}
+        </div>
+      </section>
+      <section className="space-y-1.5">
+        <p className={label}>Pause</p>
+        {paused ? (
+          <div className="flex items-center justify-between bg-white border border-[#E0DAD4] rounded-xl px-3 py-2">
+            <span className="text-[12px] text-[#374151]">Paused until {clockTime(controls.busyUntil)}</span>
+            <GhostBtn onClick={onResume}>Resume</GhostBtn>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button className={chip(false)} onClick={() => onPause(Date.now() + 60 * 60 * 1000)}>1 hour</button>
+            <button className={chip(false)} onClick={() => onPause(endOfToday())}>Rest of today</button>
+          </div>
+        )}
+        <button className="text-[11.5px] text-[#7A8494] hover:text-[#374151] underline-offset-2 hover:underline" onClick={onTurnOff}>
+          Turn Puff off
+        </button>
+      </section>
+      <div className="flex justify-center"><GhostBtn onClick={onBack}>Done</GhostBtn></div>
     </div>
   )
 }
@@ -591,11 +674,11 @@ function ManualScreen({ workState, workDuration, onHold, onDismiss }: {
           Taking a break?
         </h2>
         <p className="text-[12.5px] text-[#7A8494] leading-relaxed">
-          I'll remember where you are and the question you haven't answered yet.
+          I'll remember where you were, so coming back is easy.
         </p>
       </div>
       <div className="w-full flex flex-col gap-2">
-        <PrimaryBtn onClick={onHold}>Yes, hold my place</PrimaryBtn>
+        <PrimaryBtn onClick={onHold}>Take a break</PrimaryBtn>
         <SecondaryBtn onClick={onDismiss}>Not now</SecondaryBtn>
       </div>
     </div>
@@ -626,10 +709,10 @@ function ConfirmScreen({ workState, page, note, onNote, onConfirm, onBack }: {
         <div className="w-12 h-9 flex-shrink-0" style={{ animation: 'cloudBreathe 2.4s ease-in-out infinite' }}>
           <PuffCloud workState={workState} screen="confirm" small />
         </div>
-        <p className="text-[13px] font-medium text-[#374151] leading-snug">
-          I'll bring you back to{' '}
-          <span className="text-[#0369A1] font-semibold">{page.label}</span>.
-        </p>
+        <div className="min-w-0">
+          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were working on</p>
+          <p className="text-[13px] font-semibold text-[#0369A1] leading-snug">{page.label}</p>
+        </div>
       </div>
 
       {page.source && (
@@ -642,7 +725,7 @@ function ConfirmScreen({ workState, page, note, onNote, onConfirm, onBack }: {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="puff-note" className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">
-          Anything to remember? Optional
+          Next · optional
         </label>
         <textarea
           id="puff-note"
@@ -650,7 +733,7 @@ function ConfirmScreen({ workState, page, note, onNote, onConfirm, onBack }: {
           value={note}
           onChange={e => onNote(e.target.value.slice(0, 200))}
           rows={2}
-          placeholder="Still deciding between the two layouts…"
+          placeholder="Review the mobile help pattern"
           className="w-full resize-none text-[13px] text-[#1A1A1A] bg-[#F7F5F2] border border-[#E0DAD4] focus:border-[#7EC8E3] focus:ring-2 focus:ring-[#7EC8E3]/20 rounded-xl px-3 py-2.5 outline-none transition-all leading-relaxed"
         />
       </div>
@@ -687,9 +770,9 @@ function OnBreakScreen({ hold, awaySeconds, onBack }: {
 
       {hold && (
         <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 space-y-1">
-          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">Waiting for you</p>
+          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were working on</p>
           <p className="text-[12.5px] font-medium text-[#374151] leading-snug">{hold.label}</p>
-          {hold.note && <p className="text-[12px] text-[#7A8494] leading-snug italic">"{hold.note}"</p>}
+          {hold.note && <p className="text-[12px] text-[#7A8494] leading-snug"><span className="font-semibold">Next:</span> {hold.note}</p>}
         </div>
       )}
 
@@ -715,13 +798,13 @@ function ResumeScreen({ hold, awaySeconds, onDone }: {
       </div>
 
       <div className="text-center space-y-1">
-        <h2 className="text-[22px] font-semibold text-[#1A1A1A] tracking-tight">Welcome back ✦</h2>
+        <h2 className="text-[22px] font-semibold text-[#1A1A1A] tracking-tight">Welcome back ☁️</h2>
         <p className="text-[12.5px] text-[#7A8494]">You were away for {formatAway(awaySeconds)}.</p>
       </div>
 
       {hold ? (
         <div className="w-full bg-white rounded-xl border border-[#E0DAD4] px-3.5 py-3 space-y-1.5">
-          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were on</p>
+          <p className="text-[9.5px] font-bold text-[#BEC6D0] uppercase tracking-widest">You were working on</p>
           <p className="text-[13.5px] font-semibold text-[#1A1A1A] leading-snug">{hold.label}</p>
           {hold.source && (
             <div className="flex gap-1.5 flex-wrap pt-0.5">
@@ -732,7 +815,7 @@ function ResumeScreen({ hold, awaySeconds, onDone }: {
           )}
           {hold.note && (
             <p className="text-[12.5px] text-[#854D0E] leading-snug bg-[#FFFBEB] border border-[#FDE68A]/60 rounded-lg px-2.5 py-2 mt-1">
-              "{hold.note}"
+              <span className="font-semibold">Next:</span> {hold.note}
             </p>
           )}
         </div>
@@ -745,7 +828,7 @@ function ResumeScreen({ hold, awaySeconds, onDone }: {
       )}
 
       <div className="w-full">
-        <PrimaryBtn onClick={onDone}>{hold ? 'Return to my work' : 'Back to work'}</PrimaryBtn>
+        <PrimaryBtn onClick={onDone}>Resume</PrimaryBtn>
       </div>
     </div>
   )
@@ -789,12 +872,12 @@ function PuffLauncher({ screen, workState, agentRunning, onOpen }: {
   )
 }
 
-function PuffPanel({ screen, onMinimize, children }: {
-  screen: Screen; onMinimize: () => void; children: React.ReactNode
+function PuffPanel({ screen, onMinimize, onControls, children }: {
+  screen: Screen; onMinimize: () => void; onControls: () => void; children: React.ReactNode
 }) {
   const drag = useDragHandle()
   const label: Partial<Record<Screen, string>> = {
-    confirm: 'Hold your place', on_break: 'Away', resume: 'Welcome back',
+    confirm: 'Hold your place', on_break: 'Away', resume: 'Welcome back', pause: 'Pause', controls: 'Privacy & settings',
   }
   return (
     <div className="w-80 bg-[#F7F5F2] rounded-2xl flex flex-col overflow-hidden isolate"
@@ -813,12 +896,20 @@ function PuffPanel({ screen, onMinimize, children }: {
           <span className="text-[13px] font-semibold text-[#1A1A1A]">Puff</span>
           {label[screen] && <span className="text-[11px] text-[#BEC6D0] font-medium">· {label[screen]}</span>}
         </div>
+        <div className="flex items-center gap-0.5">
+        <button onClick={onControls} aria-label="Privacy and settings"
+          className="w-7 h-7 flex items-center justify-center text-[#BEC6D0] hover:text-[#7A8494] rounded-lg hover:bg-[#EDE7E0] transition-colors">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M3 4h10M3 8h10M3 12h10" /><circle cx="6" cy="4" r="1.4" fill="#F7F5F2" /><circle cx="10" cy="8" r="1.4" fill="#F7F5F2" /><circle cx="5" cy="12" r="1.4" fill="#F7F5F2" />
+          </svg>
+        </button>
         <button onClick={onMinimize} aria-label="Minimize"
           className="w-7 h-7 flex items-center justify-center text-[#BEC6D0] hover:text-[#7A8494] rounded-lg hover:bg-[#EDE7E0] transition-colors">
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
             <path d="M 2 7 L 12 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto overscroll-contain" key={screen}>
         {children}
@@ -943,10 +1034,12 @@ export default function App() {
     return () => window.removeEventListener('message', onMessage)
   }, [])
 
+  // A suggestion is a small card, so the host frame shrinks with it instead of covering the page.
+  const compact = screen === 'proactive' && !onboarding
   useEffect(() => {
     if (!inExtension) return
-    try { window.parent.postMessage({ type: 'PUFF_FRAME', expanded: isExpanded }, '*') } catch { /* no host */ }
-  }, [isExpanded])
+    try { window.parent.postMessage({ type: 'PUFF_FRAME', expanded: isExpanded, compact }, '*') } catch { /* no host */ }
+  }, [isExpanded, compact])
 
   // ── Local state. Nothing here leaves the browser. ──────────────────────────
   const [hold, setHold] = useState<Hold | null>(null)
@@ -955,6 +1048,8 @@ export default function App() {
   const [awaySeconds, setAwaySeconds] = useState(0)
   const [error, setError] = useState('')
   const [workSeconds, setWorkSeconds] = useState(0)
+  const [controls, setControls] = useState<Controls>({ enabled: true, busyUntil: 0, thresholdSeconds: 1800 })
+  const backFromControls = useRef<Screen>('manual')
 
   // Measured activity drives the mood, the "Working for …" pill, and the nudge.
   useEffect(() => {
@@ -965,14 +1060,23 @@ export default function App() {
       if (!alive || !s) return
       setWorkSeconds(s.sessionSeconds || 0)
       setWorkState(workStateFor(s.sessionSeconds || 0))
-      if (s.mode === 'gentle_nudge' && screen !== 'on_break' && screen !== 'resume' && screen !== 'confirm') {
+      setControls({ enabled: s.enabled, busyUntil: s.busyUntil || 0, thresholdSeconds: s.thresholdSeconds || 1800 })
+      // A break outlives this frame: moving to another page reloads the panel, and it has to
+      // pick the held place back up rather than forget that someone is away.
+      if (s.mode === 'on_break' && s.checkpoint && !hold) {
+        setHold(s.checkpoint)
+        if (screen !== 'resume') setScreen('on_break')
+        return
+      }
+      const busy = ['on_break', 'resume', 'confirm', 'pause', 'controls'].includes(screen)
+      if (s.mode === 'gentle_nudge' && !busy) {
         setScreen('proactive'); setIsExpanded(true)
       }
     }
     tick()
     const id = setInterval(tick, 5000)
     return () => { alive = false; clearInterval(id) }
-  }, [screen])
+  }, [screen, hold])
 
   // How long they have actually been away, counted from when the hold was saved.
   useEffect(() => {
@@ -1001,8 +1105,31 @@ export default function App() {
 
   const declineHold = useCallback(async () => {
     setIsExpanded(false)
+    setScreen(inExtension ? 'manual' : 'proactive')
     await declineBreak('later')
   }, [])
+
+  const pauseFor = useCallback(async (until: number) => {
+    await pauseUntil(until)
+    setControls(c => ({ ...c, busyUntil: until }))
+    if (screen === 'pause') { setIsExpanded(false); setScreen('manual') }
+  }, [screen])
+
+  const turnOff = useCallback(async () => {
+    await setPuffEnabled(false)
+    setIsExpanded(false)
+    setScreen('manual')
+  }, [])
+
+  const chooseTiming = useCallback(async (minutes: number) => {
+    await setBreakTiming(minutes)
+    setControls(c => ({ ...c, thresholdSeconds: minutes * 60 }))
+  }, [])
+
+  const openControls = useCallback(() => {
+    if (screen !== 'controls' && screen !== 'pause') backFromControls.current = screen
+    goTo('controls')
+  }, [screen, goTo])
 
   const handleDone = useCallback(async () => {
     // "Return to my work" must actually reopen the saved page, not just close the panel.
@@ -1022,7 +1149,7 @@ export default function App() {
 
   // What the saved page is called, for every screen that has to name it.
   const heldPage = hold
-    ? { label: pageLabel(hold.title), source: sourceLabel(hold.url), note: hold.note === hold.title ? '' : hold.note }
+    ? { label: pageLabel(hold.title), source: sourceLabel(hold.url), note: hold.note === hold.title ? '' : hold.note }  // older holds stored the title as the note
     : null
   const confirmPage = page
     ? { label: pageLabel(page.title), source: sourceLabel(page.url) }
@@ -1032,10 +1159,14 @@ export default function App() {
     if (onboarding) return <OnboardingScreen onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {}; setOnboarding(false) }} />
 
     switch (screen) {
-      case 'proactive': return <ProactiveScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onTakeBreak={startHold} onDismiss={declineHold} />
+      case 'proactive': return <ProactiveScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onTakeBreak={startHold} onLater={declineHold} onPause={() => goTo('pause')} />
+      case 'pause':     return <PauseScreen onPause={pauseFor} onTurnOff={turnOff} onBack={() => goTo('proactive')} />
+      case 'controls':  return <ControlsScreen controls={controls} onTiming={chooseTiming} onPause={pauseFor} onResume={() => pauseFor(0)} onTurnOff={turnOff} onBack={() => goTo(backFromControls.current)} />
       case 'manual':    return <ManualScreen workState={workState} workDuration={inExtension ? formatDuration(workSeconds) : WORK_DURATION[workState]} onHold={startHold} onDismiss={declineHold} />
       case 'confirm':   return <ConfirmScreen workState={workState} page={confirmPage} note={note} onNote={setNote} onConfirm={confirmHold} onBack={() => goTo(screen === 'confirm' ? 'manual' : screen)} />
-      case 'on_break':  return <OnBreakScreen hold={heldPage} awaySeconds={awaySeconds} onBack={() => goTo('resume')} />
+      // Interviews: after a short break people pick up without help, so the card only earns its
+      // place after a longer one. Under five minutes, "I'm back" goes straight to the work.
+      case 'on_break':  return <OnBreakScreen hold={heldPage} awaySeconds={awaySeconds} onBack={() => (awaySeconds < 300 ? handleDone() : goTo('resume'))} />
       case 'resume':    return <ResumeScreen hold={heldPage} awaySeconds={awaySeconds} onDone={handleDone} />
     }
   }
@@ -1081,7 +1212,7 @@ export default function App() {
           ? 'absolute bottom-0 right-0 flex flex-col items-end gap-2'
           : 'fixed bottom-5 right-5 flex flex-col items-end gap-2 z-50'}>
         {isExpanded && (
-          <PuffPanel screen={screen} onMinimize={() => setIsExpanded(false)}>
+          <PuffPanel screen={screen} onMinimize={() => setIsExpanded(false)} onControls={openControls}>
             {renderScreen()}
           </PuffPanel>
         )}

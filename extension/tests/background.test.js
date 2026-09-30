@@ -19,11 +19,13 @@ test('holding a place saves the current tab and only from the panel',async()=>{
   assert.equal((await w.send({type:'SAVE_HOLD',note:'x'},{url:'https://evil.example/',tab:{id:7,url:'https://evil.example/'}})).ok,false);
 });
 
-test('a hold without a note still names the page it came from',async()=>{
+test('the next step is optional; a hold without one still names the page',async()=>{
   const w=worker(core.initialState());
   const sender={url:'chrome-extension://fixture/app/index.html',tab:{id:7,url:'https://example.org/work',title:'Work'}};
   const held=await w.send({type:'SAVE_HOLD',note:'   '},sender);
-  assert.equal(held.hold.note,'Work');
+  assert.equal(held.ok,true);
+  assert.equal(held.hold.title,'Work');
+  assert.equal(held.hold.note,'');
 });
 
 test('nothing in the extension reaches for a server any more',()=>{
@@ -79,4 +81,21 @@ test('browsing leaves no tab titles or URLs behind; only a save reads the page',
   assert.equal(stored.checkpoint.title,'Work');
   assert.equal(stored.currentTabTitle,'');
   assert.equal(stored.currentTabUrl,'');
+});
+
+test('pause and timing can be set only from the panel',async()=>{
+  const w=worker(core.initialState());
+  const panel={url:'chrome-extension://fixture/app/index.html',tab:{id:7}};
+  const until=Date.now()+3600000;
+  let r=await w.send({type:'SET_PAUSE',until},panel);
+  assert.equal(r.state.busyUntil,until);
+  r=await w.send({type:'SET_TIMING',minutes:45},panel);
+  assert.equal(r.state.thresholdSeconds,2700);
+  r=await w.send({type:'SET_TIMING',minutes:7},panel);
+  assert.equal(r.state.thresholdSeconds,2700,'only the offered choices are accepted');
+  // A web page cannot silence Puff or change its timing.
+  r=await w.send({type:'SET_PAUSE',until:0},{url:'https://evil.example/',tab:{id:7}});
+  assert.equal(r.state.busyUntil,until);
+  r=await w.send({type:'SET_TIMING',minutes:60},{url:'https://evil.example/',tab:{id:7}});
+  assert.equal(r.state.thresholdSeconds,2700);
 });

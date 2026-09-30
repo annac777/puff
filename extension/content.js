@@ -1,6 +1,6 @@
 (() => {
   if (window.top !== window || document.getElementById("off-ramp-root")) return;
-  const counts = { clicks: 0, keypresses: 0, scrollEvents: 0, lastActivityAt: Date.now(), lastKeyAt: 0 };
+  const counts = { clicks: 0, keypresses: 0, scrollEvents: 0, lastActivityAt: Date.now(), lastKeyAt: 0, lastScrollAt: 0, lastBoundaryAt: 0 };
   let latestState, activityTimer, lastScrollAt = 0, panelFrame;
   const root = document.createElement("aside");
   root.id = "off-ramp-root";
@@ -92,10 +92,17 @@
   document.addEventListener("keydown", event => {
     if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
     counts.keypresses++; counts.lastKeyAt = counts.lastActivityAt = Date.now();
+    // Saving is a completion moment. Only the shortcut is recognised; no key is ever recorded.
+    if ((event.metaKey || event.ctrlKey) && (event.key === "s" || event.key === "S")) counts.lastBoundaryAt = Date.now();
+  }, { capture:true, passive:true });
+  // Submitting or sending a form is the other one. Only that it happened, never what was in it.
+  document.addEventListener("submit", event => {
+    if (!latestState?.enabled || latestState.blocked || event.target.closest?.("#off-ramp-root")) return;
+    counts.lastBoundaryAt = counts.lastActivityAt = Date.now();
   }, { capture:true, passive:true });
   document.addEventListener("scroll", () => {
     if (!latestState?.enabled || latestState.blocked || Date.now()-lastScrollAt<500) return;
-    lastScrollAt=Date.now(); counts.scrollEvents++; counts.lastActivityAt=lastScrollAt;
+    lastScrollAt=Date.now(); counts.scrollEvents++; counts.lastActivityAt=counts.lastScrollAt=lastScrollAt;
   }, { capture:true, passive:true });
   function onRuntimeMessage(message) {
     if (message.type === "OFF_RAMP_STATE") render(message.state);
@@ -114,6 +121,8 @@
     const data = event.data;
     if (data?.type === "PUFF_FRAME") {
       root.classList.toggle("or-open", !!data.expanded);
+      // A suggestion is a small card; it should not leave a large invisible area over the page.
+      root.classList.toggle("or-compact", !!data.expanded && !!data.compact);
       if (!data.expanded) summoned = false;
       syncTuck();
       clampIntoView();
@@ -132,6 +141,7 @@
   activityTimer = setInterval(() => {
     const delta = { ...counts };
     counts.clicks = counts.keypresses = counts.scrollEvents = 0;
+    counts.lastBoundaryAt = 0;
     sendMessage({type:"ACTIVITY_DELTA",delta,hidden:document.hidden,fullscreen:!!document.fullscreenElement}).then(r => {if(r?.ok)render(r.state);});
   },1000);
   sendMessage({type:"GET_STATE"}).then(r => {if(r?.ok)render(r.state);});
