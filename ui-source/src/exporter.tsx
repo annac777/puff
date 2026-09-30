@@ -21,8 +21,9 @@ function Piece({ name, children, pad = 16 }: { name: string; children: React.Rea
 const SCREENS: [string, React.ReactNode][] = [
   ['screen-01-home', <PuffPanel screen="manual" onMinimize={noop} onControls={noop}><HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onPause={noop} onResume={noop} /></PuffPanel>],
   ['screen-02-home-paused', <PuffPanel screen="manual" onMinimize={noop} onControls={noop}><HomeScreen workState="focused" workSeconds={1500} todaySeconds={13200} breaksToday={2} controls={paused} onTakeBreak={noop} onPause={noop} onResume={noop} /></PuffPanel>],
-  ['screen-03-suggestion-finished', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} finished onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
-  ['screen-04-suggestion-quiet', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} finished={false} onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
+  ['screen-03-suggestion-finished', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
+  ['screen-04-suggestion-quiet', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} why="pause" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
+  ['screen-04b-suggestion-overdue', <PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={4620} why="overdue" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>],
   ['screen-05-hold-your-place', <PuffPanel screen="confirm" onMinimize={noop} onControls={noop}><ConfirmScreen workState="tired" page={{ label: hold.label, source: hold.source }} note="" onNote={noop} onConfirm={noop} onBack={noop} /></PuffPanel>],
   ['screen-06-on-a-break', <PuffPanel screen="on_break" onMinimize={noop} onControls={noop}><OnBreakScreen hold={hold} awaySeconds={420} onBack={noop} /></PuffPanel>],
   ['screen-07-welcome-back', <PuffPanel screen="resume" onMinimize={noop} onControls={noop}><ResumeScreen hold={hold} awaySeconds={900} afterRain onDone={noop} /></PuffPanel>],
@@ -40,6 +41,7 @@ export const KEYFRAMES: { id: string; mood: Mood; season?: Season; afterRain?: b
   { id: 'very_tired', mood: 'very_tired', t: [0, 0.8, 1.6, 2.0, 2.5, 3.0] },
   { id: 'sleepy', mood: 'sleepy', t: [0, 0.5, 1.0, 1.5, 2.0, 2.5] },
   { id: 'nudge', mood: 'nudge', t: [0, 0.27, 0.53, 0.8, 1.07, 1.33] },
+  { id: 'hello', mood: 'hello', t: [0, 0.225, 0.45, 0.675, 0.9, 1.4] },
   { id: 'finished', mood: 'finished', t: [0, 0.3, 0.6, 0.9, 1.2, 1.5] },
   { id: 'saving', mood: 'saving', t: [0, 0.33, 0.67, 1.0, 1.33, 1.67] },
   { id: 'break', mood: 'break', season: 'autumn', t: [0, 1.0, 2.0, 3.5, 4.0, 4.6] },
@@ -108,7 +110,7 @@ function Corner({ panel, mood }: { panel?: React.ReactNode; mood: Mood }) {
 const SCENES: [string, React.ReactNode][] = [
   ['context-1-working', <MockPage><Corner mood="focused" /></MockPage>],
   ['context-2-open', <MockPage><Corner mood="tired" panel={<PuffPanel screen="manual" onMinimize={noop} onControls={noop}><HomeScreen workState="tired" workSeconds={2580} todaySeconds={13200} breaksToday={2} controls={controls} onTakeBreak={noop} onPause={noop} onResume={noop} /></PuffPanel>} /></MockPage>],
-  ['context-3-suggestion', <MockPage><Corner mood="nudge" panel={<PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} finished onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>} /></MockPage>],
+  ['context-3-suggestion', <MockPage><Corner mood="nudge" panel={<PuffPanel screen="proactive" onMinimize={noop} onControls={noop}><ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} onPause={noop} /></PuffPanel>} /></MockPage>],
   ['context-4-on-a-break', <MockPage><Corner mood="break" panel={<PuffPanel screen="on_break" onMinimize={noop} onControls={noop}><OnBreakScreen hold={hold} awaySeconds={420} onBack={noop} /></PuffPanel>} /></MockPage>],
   ['context-5-welcome-back', <MockPage><Corner mood="welcome" panel={<PuffPanel screen="resume" onMinimize={noop} onControls={noop}><ResumeScreen hold={hold} awaySeconds={900} afterRain onDone={noop} /></PuffPanel>} /></MockPage>],
 ]

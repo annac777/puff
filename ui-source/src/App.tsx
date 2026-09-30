@@ -291,21 +291,30 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 
 // Research round one: people ignore reminders that arrive mid-focus and resent ones that nag, so
 // the suggestion is a small dialog that is easy to wave off, and it says why it chose this moment.
-function ProactiveScreen({ workSeconds, finished, onTakeBreak, onLater, onPause }: {
-  workSeconds: number; finished: boolean; onTakeBreak: () => void; onLater: () => void; onPause: () => void
+// Three reasons to ask, each said plainly. An overdue ask did not find a good moment, so Puff
+// waves hello instead of pretending it did.
+type NudgeWhy = 'finished' | 'pause' | 'overdue'
+const NUDGE_COPY: Record<NudgeWhy, { mood: Mood; caption: string; question: string }> = {
+  finished: { mood: 'finished', caption: 'you just finished something ✦', question: 'good moment for a break?' },
+  pause:    { mood: 'nudge',    caption: 'of steady focus',               question: 'good moment for a break?' },
+  overdue:  { mood: 'hello',    caption: "you've been at it a while",     question: 'time to come up for air?' },
+}
+function ProactiveScreen({ workSeconds, why, onTakeBreak, onLater, onPause }: {
+  workSeconds: number; why: NudgeWhy; onTakeBreak: () => void; onLater: () => void; onPause: () => void
 }) {
+  const copy = NUDGE_COPY[why]
   return (
     <div className="px-4 pt-2.5 pb-3.5 text-center" style={{ animation: 'fadeSlide 0.2s ease-out' }}>
       <div className="flex items-center justify-center gap-2.5">
-        <div className="w-[72px] h-[60px] flex-shrink-0"><Cloud mood={finished ? 'finished' : 'nudge'} /></div>
+        <div className="w-[72px] h-[60px] flex-shrink-0"><Cloud mood={copy.mood} /></div>
         <div className="text-left">
           <p className="text-[24px] font-extrabold puff-ink leading-none tabular-nums tracking-tight">{heroTime(workSeconds)}</p>
           <p className="puff-mono text-[11px] text-[#5A6480] mt-1.5 leading-snug">
-            {finished ? 'you just finished something ✦' : 'of steady focus'}
+            {copy.caption}
           </p>
         </div>
       </div>
-      <p className="text-[14.5px] font-extrabold puff-ink mt-2.5">good moment for a break?</p>
+      <p className="text-[14.5px] font-extrabold puff-ink mt-2.5">{copy.question}</p>
       <div className="flex gap-2 justify-center mt-3 pb-0.5">
         <button onClick={onTakeBreak} className="puff-btn puff-mono bg-[#FFD66B] text-[12px] px-3.5 h-8">BREAK</button>
         <button onClick={onLater} className="puff-btn puff-mono bg-[#DCEFFA] text-[12px] px-3.5 h-8">LATER</button>
@@ -783,8 +792,8 @@ export default function App() {
   const [workSeconds, setWorkSeconds] = useState(0)
   const [todaySeconds, setTodaySeconds] = useState(0)
   const [breaksToday, setBreaksToday] = useState(0)
-  // Whether the current suggestion came from finishing something, so the card can say so.
-  const [finished, setFinished] = useState(false)
+  // Why the current suggestion was made, so the card can say so.
+  const [nudgeWhy, setNudgeWhy] = useState<NudgeWhy>('pause')
   const [controls, setControls] = useState<Controls>({ enabled: true, busyUntil: 0, thresholdSeconds: 1800 })
   const backFromControls = useRef<Screen>('manual')
   const [tuck, setTuckState] = useState(false)
@@ -838,7 +847,7 @@ export default function App() {
       }
       const busy = ['on_break', 'resume', 'confirm', 'pause', 'controls'].includes(screen)
       if (s.mode === 'gentle_nudge' && !busy) {
-        setFinished(!!s.lastBoundaryAt && Date.now() - s.lastBoundaryAt < 90_000)
+        setNudgeWhy(s.nudgeKind || (s.lastBoundaryAt && Date.now() - s.lastBoundaryAt < 90_000 ? 'finished' : 'pause'))
         setScreen('proactive'); setIsExpanded(true)
       }
     }
@@ -936,14 +945,14 @@ export default function App() {
   const launcherMood: Mood = screen === 'on_break' ? 'break'
     : screen === 'resume' ? 'welcome'
     : pausedNow ? 'paused'
-    : screen === 'proactive' && isExpanded ? 'nudge'
+    : screen === 'proactive' && isExpanded ? NUDGE_COPY[nudgeWhy].mood
     : BASE_MOOD[workState]
 
   function renderScreen(): React.ReactNode {
     if (onboarding) return <OnboardingScreen onDone={() => { try { localStorage.setItem('puffOnboarded', '1') } catch {}; setOnboarding(false) }} />
 
     switch (screen) {
-      case 'proactive': return <ProactiveScreen workSeconds={shownSeconds} finished={finished} onTakeBreak={startHold} onLater={declineHold} onPause={() => goTo('pause')} />
+      case 'proactive': return <ProactiveScreen workSeconds={shownSeconds} why={nudgeWhy} onTakeBreak={startHold} onLater={declineHold} onPause={() => goTo('pause')} />
       case 'pause':     return <PauseScreen onPause={pauseFor} onTurnOff={turnOff} onBack={() => goTo('proactive')} />
       case 'controls':  return <ControlsScreen controls={controls} tuck={tuck} onTuck={chooseTuck} onTiming={chooseTiming} onPause={pauseFor} onResume={() => pauseFor(0)} onTurnOff={turnOff} onBack={() => goTo(backFromControls.current)} />
       case 'manual':    return <HomeScreen workState={workState} workSeconds={shownSeconds} todaySeconds={inExtension ? todaySeconds : 3 * 3600 + 40 * 60} breaksToday={inExtension ? breaksToday : 2}

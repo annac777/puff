@@ -3,7 +3,7 @@
 
 export type Mood =
   | 'idle' | 'focused' | 'tired' | 'very_tired' | 'sleepy'
-  | 'nudge' | 'finished' | 'saving' | 'break' | 'paused' | 'welcome'
+  | 'nudge' | 'hello' | 'finished' | 'saving' | 'break' | 'paused' | 'welcome'
   | 'dragged' | 'petted'
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
@@ -20,7 +20,7 @@ const INK = '#34405E'  // the same deep ink as the panel's outlines, never pure 
 const BLUSH = '#F4A6B6'
 const FILL: Record<Mood, string> = {
   idle: '#86CCE8', focused: '#7CC2E0', tired: '#93BBCE', very_tired: '#9AB2C1', sleepy: '#A3B3BF',
-  nudge: '#86CCE8', finished: '#86CCE8', saving: '#86CCE8', break: '#86CCE8', paused: '#9EC9DC',
+  nudge: '#86CCE8', hello: '#86CCE8', finished: '#86CCE8', saving: '#86CCE8', break: '#86CCE8', paused: '#9EC9DC',
   welcome: '#86CCE8', dragged: '#86CCE8', petted: '#86CCE8',
 }
 // Heavier moods sit lower and flatter, as if the cloud has taken on water.
@@ -268,6 +268,30 @@ function Character({ mood, fill, sag, season }: { mood: Mood; fill: string; sag:
           </g>
         </>
       )
+    case 'hello': {
+      // The raised arm joins the body with no line between them: both are inked first, then both
+      // are filled, so only the outside of the combined shape is outlined. The two arm layers
+      // share one animation and stay in step.
+      const arm = (w: number) => <><path d="M97 52 L107 30" strokeWidth={w} strokeLinecap="round" /><circle cx="108.5" cy="26.5" r={6.5 + (w - 10) / 2} /></>
+      return (
+        <>
+          <g className="pf-hi-lines" stroke={INK} strokeWidth="2" fill="none" strokeLinecap="round">
+            <path d="M117 14 q4 4 2 10" /><path d="M121 26 q2.5 3 0 7" /><path d="M100 13 q-2 -4 1 -8" />
+          </g>
+          <g className="pf-greet pf-vb">
+            <g className="pf-hi" fill={INK} stroke={INK}>{arm(14.4)}</g>
+            <g fill={INK} stroke={INK} strokeWidth="6" strokeLinejoin="round"><BodyShapes sag={0} /></g>
+            <g className="pf-hi" fill={fill} stroke={fill}>{arm(10)}</g>
+            <g fill={fill}><BodyShapes sag={0} /></g>
+            <Shine /><Cheeks o={0.6} />
+            <path d="M45.5 49.5 Q50 46.5 54.5 49 M65.5 49 Q70 46.5 74.5 49.5" stroke={INK} strokeWidth="2" fill="none" strokeLinecap="round" />
+            <OpenEyes r={4.6} y={57.5} />
+            <path d="M53 65 Q60 74.5 67 65 Z" fill={INK} />
+            <path d="M56.5 69.5 Q60 72.5 63.5 69.5" stroke={BLUSH} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          </g>
+        </>
+      )
+    }
     case 'finished':
       return (
         <>

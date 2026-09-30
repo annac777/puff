@@ -156,6 +156,9 @@ body{padding:24px 24px 24px 24px;box-sizing:border-box}
 .pf-hop { animation: pf-hop 1.6s ease-in-out infinite; }
 .pf-wave { animation: pf-wave .8s ease-in-out infinite alternate; transform-box: view-box; transform-origin: 92px 58px; }
 .pf-pop { animation: pf-pop 1.6s ease-in-out infinite; }
+.pf-greet { animation: pf-greet 1.8s ease-in-out infinite; }
+.pf-hi { animation: pf-hi .45s ease-in-out infinite alternate; transform-box: view-box; transform-origin: 97px 52px; }
+.pf-hi-lines { animation: pf-hi-lines .9s ease-in-out infinite; }
 .pf-confetti { animation: pf-confetti 1.8s linear infinite; }
 .pf-jump { animation: pf-jump 1.8s cubic-bezier(.3,.7,.4,1) infinite; }
 .pf-hug { animation: pf-hug 2s ease-in-out infinite; }
@@ -213,6 +216,10 @@ body{padding:24px 24px 24px 24px;box-sizing:border-box}
 @keyframes pf-leaf { 0% { transform: translate(0, -10px) rotate(0); opacity: 0; } 10% { opacity: 1; } 50% { transform: translate(14px, 50px) rotate(180deg); } 100% { transform: translate(-6px, 105px) rotate(360deg); opacity: 0; } }
 @keyframes pf-flash { 0%, 84%, 100% { opacity: 0; } 86%, 91% { opacity: 1; } 88% { opacity: .25; } }
 @keyframes pf-rainbow { from { stroke-dashoffset: 160; } to { stroke-dashoffset: 0; } }
+/* Hello: leans toward the person and waves quickly, the way you wave to catch someone's eye. */
+@keyframes pf-greet { 0%, 100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(3deg) translateY(-3px); } }
+@keyframes pf-hi { from { transform: rotate(-18deg); } to { transform: rotate(14deg); } }
+@keyframes pf-hi-lines { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
   .pf-anim, .pf-anim * { animation: none !important; }

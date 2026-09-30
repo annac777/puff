@@ -194,3 +194,32 @@ test("a new day starts the totals over",()=>{
   const s=core.evaluate({...core.initialState(0),todaySeconds:5000,breaksToday:3,day:"2000-01-01"},86400000*3);
   assert.equal(s.todaySeconds,0);assert.equal(s.breaksToday,0);
 });
+
+// ── Overdue: someone who reads or types straight through never gives a good moment ──
+test("well past their timing, a reader is asked at the next brief stop",()=>{
+  // 30-minute timing, 47 minutes in, scrolling until four seconds ago: that is reading.
+  const reading={thresholdSeconds:1800,activeSeconds:1800*1.2,lastKeyAt:10000,lastScrollAt:96000,lastActivityAt:96000};
+  let s=core.evaluate(ready(reading),100000);
+  assert.notEqual(s.mode,"gentle_nudge","before one and a half times their timing, reading is still waited out");
+  s=core.evaluate(ready({...reading,activeSeconds:1800*1.6}),100000);
+  assert.equal(s.overdue,true);
+  assert.equal(s.mode,"gentle_nudge");
+  assert.equal(s.nudgeKind,"overdue");
+});
+test("overdue still never interrupts typing, and needs at least a brief stop",()=>{
+  let s=core.evaluate(ready({activeSeconds:3000,lastKeyAt:99000,lastActivityAt:99000}),100000);
+  assert.notEqual(s.mode,"gentle_nudge","typing a second ago");
+  s=core.evaluate(ready({activeSeconds:3000,lastKeyAt:10000,lastScrollAt:99500,lastActivityAt:99500}),100000);
+  assert.notEqual(s.mode,"gentle_nudge","still scrolling");
+});
+test("an overdue invitation waits to be answered instead of vanishing when work resumes",()=>{
+  let s=core.evaluate(ready({activeSeconds:3000,lastKeyAt:10000,lastScrollAt:96000,lastActivityAt:96000}),100000);
+  assert.equal(s.nudgeKind,"overdue");
+  s=core.mergeActivity(s,{scrollEvents:3,lastActivityAt:101000,lastScrollAt:101000},101000);
+  assert.equal(s.mode,"gentle_nudge");
+  assert.equal(core.evaluate(s,160000).dailyInvitations,1,"and it is still one invitation");
+});
+test("a normal invitation says which kind of moment it was",()=>{
+  assert.equal(core.evaluate(ready({lastActivityAt:99000,lastBoundaryAt:99000}),100000).nudgeKind,"finished");
+  assert.equal(core.evaluate(ready(),100000).nudgeKind,"pause");
+});

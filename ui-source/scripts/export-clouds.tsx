@@ -23,6 +23,8 @@ function save(name: string, markup: string) {
 }
 
 MOODS.forEach((m, i) => save(`${String(i + 1).padStart(2, '0')}-${m}`, renderToStaticMarkup(<Cloud mood={m} season="autumn" />)))
+// Added after the set was numbered; it follows nudge, the other way Puff invites a break.
+save('06b-hello', renderToStaticMarkup(<Cloud mood="hello" />))
 save('11b-welcome-after-rain', renderToStaticMarkup(<Cloud mood="welcome" afterRain />))
 SEASONS.forEach(s => save(`break-${s}`, renderToStaticMarkup(<Cloud mood="break" season={s} />)))
 console.log(`Wrote ${MOODS.length + 1 + SEASONS.length} SVGs to ${out}`)

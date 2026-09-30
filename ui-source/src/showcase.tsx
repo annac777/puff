@@ -11,7 +11,7 @@ const controls = { enabled: true, busyUntil: 0, thresholdSeconds: 1800 }
 const paused = { ...controls, busyUntil: new Date().setHours(16, 30, 0, 0) + 24 * 3600 * 1000 }
 const hold = { label: 'Registration flow', source: 'Figma', note: 'Review the mobile help pattern' }
 
-const MOODS: Mood[] = ['idle', 'focused', 'tired', 'very_tired', 'sleepy', 'nudge', 'finished', 'saving', 'break', 'paused', 'welcome', 'dragged', 'petted']
+const MOODS: Mood[] = ['idle', 'focused', 'tired', 'very_tired', 'sleepy', 'nudge', 'hello', 'finished', 'saving', 'break', 'paused', 'welcome', 'dragged', 'petted']
 const SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter']
 
 function Frame({ title, children }: { title: string; children: React.ReactNode }) {
@@ -159,10 +159,13 @@ function Board() {
           <HomeScreen workState="focused" workSeconds={1500} todaySeconds={13200} breaksToday={2} controls={paused} onTakeBreak={noop} onPause={noop} onResume={noop} />
         </PuffPanel></Frame>
         <Frame title="Suggestion · just finished something"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop}>
-          <ProactiveScreen workSeconds={2880} finished onTakeBreak={noop} onLater={noop} onPause={noop} />
+          <ProactiveScreen workSeconds={2880} why="finished" onTakeBreak={noop} onLater={noop} onPause={noop} />
         </PuffPanel></Frame>
         <Frame title="Suggestion · quiet moment"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop}>
-          <ProactiveScreen workSeconds={2880} finished={false} onTakeBreak={noop} onLater={noop} onPause={noop} />
+          <ProactiveScreen workSeconds={2880} why="pause" onTakeBreak={noop} onLater={noop} onPause={noop} />
+        </PuffPanel></Frame>
+        <Frame title="Suggestion · long overdue"><PuffPanel screen="proactive" onMinimize={noop} onControls={noop}>
+          <ProactiveScreen workSeconds={2880 * 1.6} why="overdue" onTakeBreak={noop} onLater={noop} onPause={noop} />
         </PuffPanel></Frame>
         <Frame title="Hold your place"><PuffPanel screen="confirm" onMinimize={noop} onControls={noop}>
           <ConfirmScreen workState="tired" page={{ label: hold.label, source: hold.source }} note="" onNote={noop} onConfirm={noop} onBack={noop} />

@@ -39,7 +39,7 @@
     lastActivityAt:0,lastKeyAt:0,lastScrollAt:0,lastBoundaryAt:0,lastTabChangeAt:0,designLastChangeAt:0,designConnected:false,recentTyping:false,possibleBreakpoint:false,
     mode:"quiet",laterCount:0,cooldownUntil:0,responseHistory:[],checkpoint:null,demoMode:false,thresholdSeconds:1800,
     windows:[],rhythm:{intensity:0,scatter:0,settling:0,windows:0},learnedThreshold:0,lastAction:"",lastActionAt:0,pausedAt:0,
-    dailyInvitations:0,todaySeconds:0,breaksToday:0,day:day(now),sessionInvited:false,enabled:true,blocked:false,busyUntil:0,needScore:0,opportunityScore:0,reason:"Waiting for activity"};}
+    dailyInvitations:0,todaySeconds:0,breaksToday:0,day:day(now),sessionInvited:false,enabled:true,blocked:false,busyUntil:0,needScore:0,opportunityScore:0,overdue:false,nudgeKind:"",reason:"Waiting for activity"};}
   function evaluate(state,now=Date.now()){
     const next={...initialState(now),...state};
     if(next.day!==day(now)){next.day=day(now);next.dailyInvitations=0;next.todaySeconds=0;next.breaksToday=0;}
@@ -85,17 +85,28 @@
     next.needScore=Math.min(1,next.activeSeconds/next.effectiveThreshold);
     next.opportunityScore=(boundary||(pause&&!next.reading))&&!next.recentTyping?1:0;
     next.possibleBreakpoint=next.needScore>=1&&next.opportunityScore>=1;
+    // Waiting for a good moment is right until it is not: someone who reads or types straight
+    // through never produces one. Half again past their timing, any brief stop will do, reading
+    // included. Typing still is not interrupted.
+    const shortStopMs=next.demoMode?1000:3000;
+    next.overdue=next.activeSeconds>=Math.max(next.effectiveThreshold,next.thresholdSeconds*1.5);
+    const briefStop=(recentActivity>0&&now-recentActivity>=shortStopMs)||systemPause||boundary;
+    const overdueOpening=next.overdue&&briefStop&&!(next.lastKeyAt>0&&now-next.lastKeyAt<shortStopMs);
     const blocked=!next.enabled||next.blocked||next.busyUntil>now||next.idleState!=="active";
     next.reason=!next.enabled?"Monitoring paused":next.blocked?"Protected or full-screen page":next.busyUntil>now?"Paused":next.idleState!=="active"?"Browser not active":
       now<next.cooldownUntil?"Respecting your cooldown":next.recentTyping?"Waiting while you type":next.reading?"Waiting while you read":next.needScore<1?"Focus threshold not reached":!pause&&!boundary?"Waiting for a natural pause":boundary?"Sustained work, then something finished":"Sustained work followed by a pause";
     if(["checkpoint","on_break","resume"].includes(next.mode))return next;
     if(blocked||now<next.cooldownUntil||next.dailyInvitations>=4){next.mode="quiet";return next;}
-    if(next.mode==="gentle_nudge"&&!pause&&!boundary){next.mode="quiet";next.cooldownUntil=now+60_000;return next;}
+    // An overdue invitation was not tied to a moment, so it stays until it is answered.
+    if(next.mode==="gentle_nudge"&&next.nudgeKind!=="overdue"&&!pause&&!boundary){next.mode="quiet";next.cooldownUntil=now+60_000;return next;}
     if(next.mode==="gentle_nudge")return next;
     if(next.sessionInvited){next.mode="quiet";return next;}
     if(next.needScore<1){next.mode="quiet";return next;}
     next.mode="considering";
-    if(next.possibleBreakpoint){next.mode="gentle_nudge";next.dailyInvitations++;next.sessionInvited=true;}
+    if(next.possibleBreakpoint||overdueOpening){
+      next.mode="gentle_nudge";next.nudgeKind=next.possibleBreakpoint?(boundary?"finished":"pause"):"overdue";
+      next.dailyInvitations++;next.sessionInvited=true;
+    }
     return next;
   }
   function mergeActivity(state,delta,now=Date.now()){

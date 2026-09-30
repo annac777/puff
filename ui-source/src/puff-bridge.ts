@@ -24,6 +24,8 @@ export type ActivityState = {
   todaySeconds: number
   breaksToday: number
   lastBoundaryAt: number
+  /** Why the current invitation was made: just finished something, a pause, or long overdue. */
+  nudgeKind?: '' | 'finished' | 'pause' | 'overdue'
   rhythm: { intensity: number; scatter: number; settling: number; windows: number }
   checkpoint: Hold | null
   reason: string
