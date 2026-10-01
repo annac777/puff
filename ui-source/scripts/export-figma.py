@@ -3,7 +3,7 @@
 For each kind (screens, frames, context) it asks headless Chrome for the page's layout, takes one
 2x screenshot at that exact window size, and crops every [data-export] element into its own PNG.
 
-Usage: python3 scripts/export-figma.py <base-url> <output-folder>
+Usage: python3 scripts/export-figma.py <base-url> <output-folder> [kind ...]
   where <base-url> serves the build of vite.showcase.config.ts, e.g. http://127.0.0.1:4331
 """
 import json, re, subprocess, sys
@@ -12,7 +12,7 @@ from PIL import Image
 
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 SCALE = 2
-WIDTH = {"screens": 420, "frames": 1600, "context": 1400}
+WIDTH = {"screens": 420, "frames": 1600, "context": 1400, "proto": 1400}
 
 
 def chrome(*args):
@@ -35,11 +35,15 @@ def export(base, out, kind):
         box = tuple(v * SCALE for v in (b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"]))
         sheet.crop(box).save(folder / f"{b['name']}.png")
     shot.unlink()
+    hots = re.search(r'<pre id="hots"[^>]*>(.*?)</pre>', dom, re.S)
+    if hots:
+        (folder / "hotspots.json").write_text(hots.group(1).replace("&quot;", '"').replace("&amp;", "&"))
     return len(bounds)
 
 
 if __name__ == "__main__":
     base, out = sys.argv[1], Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
-    for kind in ("screens", "frames", "context"):
+    kinds = sys.argv[3:] or ("screens", "frames", "context", "proto")
+    for kind in kinds:
         print(kind, export(base, out, kind))

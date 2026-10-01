@@ -116,6 +116,24 @@ const SCENES: [string, React.ReactNode][] = [
   ['context-5-welcome-back', <MockPage><Corner mood="welcome" panel={<PuffPanel screen="resume" onMinimize={noop} onControls={noop}><ResumeScreen hold={hold} awaySeconds={900} afterRain onDone={noop} /></PuffPanel>} /></MockPage>],
 ]
 
+// ─── Clickable prototype: every screen in place on the page, with its buttons' positions ──
+const screenOf = (name: string) => SCREENS.find(([n]) => n === name)![1]
+const PROTO: [string, Mood, React.ReactNode | null][] = [
+  ['proto-readme-1', 'welcome', screenOf('screen-00-readme-1')],
+  ['proto-readme-2', 'welcome', screenOf('screen-00-readme-2')],
+  ['proto-readme-3', 'welcome', screenOf('screen-00-readme-3')],
+  ['proto-working', 'focused', null],
+  ['proto-home', 'tired', screenOf('screen-01-home')],
+  ['proto-home-muted', 'paused', screenOf('screen-02-home-paused')],
+  ['proto-suggestion', 'finished', screenOf('screen-03-suggestion-finished')],
+  ['proto-overdue', 'pleading', screenOf('screen-04b-suggestion-overdue')],
+  ['proto-hold', 'saving', screenOf('screen-05-hold-your-place')],
+  ['proto-break', 'break', screenOf('screen-06-on-a-break')],
+  ['proto-welcome', 'welcome', screenOf('screen-07-welcome-back')],
+  ['proto-mute', 'paused', screenOf('screen-08-pause')],
+  ['proto-settings', 'focused', screenOf('screen-09-settings')],
+]
+
 function Exporter() {
   const kind = new URLSearchParams(location.search).get('kind') || 'screens'
   useEffect(() => {
@@ -124,6 +142,8 @@ function Exporter() {
     if (kind !== 'context') document.body.style.background = 'transparent'
     // In use a tall screen scrolls inside the window; the style guide shows all of it.
     if (kind === 'screens') document.head.insertAdjacentHTML('beforeend', '<style>.puff-window{max-height:none!important}</style>')
+    // In the prototype the window keeps the height it has on a laptop screen; tall ones scroll.
+    if (kind === 'proto') document.head.insertAdjacentHTML('beforeend', '<style>.puff-window{max-height:640px!important}</style>')
     // The export script reads these bounds back through --dump-dom.
     const bounds = [...document.querySelectorAll<HTMLElement>('[data-export]')].map(el => {
       const r = el.getBoundingClientRect()
@@ -134,9 +154,23 @@ function Exporter() {
     out.style.display = 'none'
     out.textContent = JSON.stringify(bounds)
     document.body.appendChild(out)
+    if (kind === 'proto') {
+      // Every button in each scene, relative to the scene, named by its label or text.
+      const hots = Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-export]')].map(scene => {
+        const base = scene.getBoundingClientRect()
+        return [scene.dataset.export, [...scene.querySelectorAll('button')].map(b => {
+          const r = b.getBoundingClientRect()
+          return { label: (b.getAttribute('aria-label') || b.textContent || '').trim(), x: Math.round(r.left - base.left), y: Math.round(r.top - base.top), w: Math.round(r.width), h: Math.round(r.height) }
+        })]
+      }))
+      const pre = document.createElement('pre')
+      pre.id = 'hots'; pre.style.display = 'none'; pre.textContent = JSON.stringify(hots)
+      document.body.appendChild(pre)
+    }
   }, [kind])
 
   if (kind === 'screens') return <div style={{ width: 400 }}>{SCREENS.map(([n, el]) => <Piece key={n} name={n}>{el}</Piece>)}</div>
+  if (kind === 'proto') return <div>{PROTO.map(([n, mood, panel]) => <Piece key={n} name={n} pad={0}><MockPage><Corner mood={mood} panel={panel ?? undefined} /></MockPage></Piece>)}</div>
   if (kind === 'context') return <div>{SCENES.map(([n, el]) => <Piece key={n} name={n} pad={0}>{el}</Piece>)}</div>
   return (
     <div>
